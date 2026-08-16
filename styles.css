@@ -132,6 +132,7 @@ a { color: inherit; text-decoration: none; }
 h1, h2 { margin: 0; }
 h1 { max-width: 570px; font: 700 clamp(3.1rem, 5.8vw, 5.9rem)/.95 "Space Grotesk", sans-serif; letter-spacing: -.075em; }
 h1 em { color: #c4b5fd; font-style: normal; }
+.headline-subtitle { display: block; font-size: .57em; letter-spacing: -.06em; }
 h2 { font: 700 1.55rem/1.05 "Space Grotesk", sans-serif; letter-spacing: -.055em; text-transform: none; }
 .hero-description { max-width: 390px; margin: 25px 0 30px; color: #e1ddec; font-size: .92rem; font-weight: 500; line-height: 1.72; }
 .steps { display: grid; max-width: 420px; grid-template-columns: 1fr 1fr 1fr; gap: 7px; color: #e8e5f0; font: 700 .58rem/1.35 "DM Mono", monospace; text-transform: uppercase; }
