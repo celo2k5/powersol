@@ -20,7 +20,6 @@ const state = {
 
 const elements = {
   socketStatus: document.getElementById('socketStatus'),
-  walletButton: document.getElementById('walletButton'),
   cycleLabel: document.getElementById('cycleLabel'),
   drawState: document.getElementById('drawState'),
   prizePool: document.getElementById('prizePool'),
@@ -38,6 +37,10 @@ const elements = {
   progressPercent: document.getElementById('progressPercent'),
   progressBar: document.getElementById('progressBar'),
   ticketNumbers: document.getElementById('ticketNumbers'),
+  ticketLookup: document.getElementById('ticketLookup'),
+  walletAddressInput: document.getElementById('walletAddressInput'),
+  walletLookupMessage: document.getElementById('walletLookupMessage'),
+  tokenMint: document.getElementById('tokenMint'),
   walletSearch: document.getElementById('walletSearch'),
   playerCount: document.getElementById('playerCount'),
   playerRows: document.getElementById('playerRows'),
@@ -71,6 +74,17 @@ function estimatedBallCount(balance) {
 
 function assignedEntries(wallet) {
   return state.powerData.ticketEntries.get(wallet) || [];
+}
+
+function currentTokenMint() {
+  const config = state.data?.config || {};
+  return config.tokenMint || config.mainTokenMint || state.data?.tokenMint || state.data?.mainTokenMint || '';
+}
+
+function renderTokenMint() {
+  const mint = currentTokenMint();
+  elements.tokenMint.textContent = mint || 'Awaiting backend token configuration';
+  elements.tokenMint.title = mint;
 }
 
 function updateConnection(status) {
@@ -119,22 +133,22 @@ function renderTicket() {
   const assigned = assignedEntries(wallet);
   const carried = Math.min(balance % TOKENS_PER_BALL, TOKENS_PER_BALL);
 
-  elements.ticketWallet.textContent = wallet || 'Connect a wallet to load your ticket';
-  elements.ticketState.textContent = wallet ? 'Wallet connected' : 'Wallet not connected';
+  elements.ticketWallet.textContent = wallet || 'No wallet address selected';
+  elements.ticketState.textContent = wallet ? (holder ? 'Holder found' : 'Address checked') : 'Address required';
   elements.tokensHeld.textContent = wallet ? formatAmount(balance) : '--';
   elements.eligibleBalls.textContent = `${eligible} / ${MAX_BALLS}`;
   elements.progressPercent.textContent = wallet ? `${Math.round((carried / TOKENS_PER_BALL) * 100)}%` : '0%';
   elements.progressBar.style.width = `${wallet ? (carried / TOKENS_PER_BALL) * 100 : 0}%`;
   elements.progressLabel.textContent = wallet
     ? `${formatAmount(carried)} / ${formatAmount(TOKENS_PER_BALL)} until your next ball`
-    : '500,000 tokens are required for your first ball';
+    : '500,000 tokens are required for the first ball';
 
   elements.ticketNumbers.replaceChildren();
   if (!wallet || !assigned.length) {
     elements.ticketNumbers.classList.add('empty');
     elements.ticketNumbers.textContent = wallet
       ? 'Ticket numbers will appear when the Powerball backend provides assigned entries.'
-      : 'Connect a wallet to view your ticket.';
+      : 'Enter a wallet address above to view a ticket.';
     return;
   }
   elements.ticketNumbers.classList.remove('empty');
@@ -203,12 +217,13 @@ function renderHistory() {
   }
   elements.ticketHistory.innerHTML = state.connectedWallet
     ? '<p class="empty-message">Previous wallet tickets require Powerball history events from the backend.</p>'
-    : '<p class="empty-message">Connect a wallet to view previous POWER tickets.</p>';
+    : '<p class="empty-message">Look up a wallet address to view previous POWER tickets.</p>';
 }
 
 function hydrateFromState(data) {
   state.data = data;
   state.holders = Array.isArray(data.holders) ? data.holders : [];
+  renderTokenMint();
   updateCurrentDraw();
   renderTicket();
   renderPlayerBoard();
@@ -297,24 +312,25 @@ function connectSocket() {
   });
 }
 
-async function connectWallet() {
-  const provider = window.solana;
-  if (!provider?.connect) {
-    elements.walletButton.textContent = 'Wallet provider required';
+function lookupWallet(event) {
+  event.preventDefault();
+  const wallet = elements.walletAddressInput.value.trim();
+  if (!isWallet(wallet)) {
+    elements.walletLookupMessage.textContent = 'Enter a valid Solana wallet address to view a ticket.';
+    elements.walletLookupMessage.classList.add('error');
     return;
   }
-  try {
-    const response = await provider.connect();
-    state.connectedWallet = response.publicKey.toString();
-    elements.walletButton.textContent = shorten(state.connectedWallet);
-    renderTicket();
-    renderHistory();
-  } catch {
-    elements.walletButton.textContent = 'Connect wallet';
-  }
+
+  state.connectedWallet = wallet;
+  elements.walletLookupMessage.classList.remove('error');
+  elements.walletLookupMessage.textContent = state.holders.some((holder) => holder.wallet === wallet)
+    ? 'Live holder record found. Ticket eligibility is updated below.'
+    : 'Address checked. No current holder record was found in the live feed.';
+  renderTicket();
+  renderHistory();
 }
 
-elements.walletButton.addEventListener('click', connectWallet);
+elements.ticketLookup.addEventListener('submit', lookupWallet);
 elements.walletSearch.addEventListener('input', renderPlayerBoard);
 setInterval(updateCurrentDraw, 1_000);
 connectSocket();

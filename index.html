@@ -25,7 +25,7 @@
       </nav>
       <div class="topbar-right">
         <span id="socketStatus" class="socket-status"><i></i> Connecting</span>
-        <button id="walletButton" class="wallet-button" type="button">Connect wallet</button>
+        <a class="wallet-button" href="#ticket">See ticket</a>
       </div>
     </header>
 
@@ -81,12 +81,23 @@
         <aside id="ticket" class="ticket-card">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">CONNECTED WALLET</p>
+              <p class="eyebrow">WALLET TICKET LOOKUP</p>
               <h2>Your POWERSOL ticket</h2>
             </div>
-            <span id="ticketState" class="subtle-pill">Wallet not connected</span>
+            <span id="ticketState" class="subtle-pill">Address required</span>
           </div>
-          <div class="ticket-wallet" id="ticketWallet">Connect a wallet to load your ticket</div>
+          <p class="ticket-intro">Enter the public Solana address that holds the main token. No wallet connection or signature is required.</p>
+          <form id="ticketLookup" class="ticket-lookup">
+            <label class="visually-hidden" for="walletAddressInput">Solana wallet address</label>
+            <input id="walletAddressInput" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Paste holder wallet address" />
+            <button type="submit">View ticket</button>
+          </form>
+          <p id="walletLookupMessage" class="lookup-message">Paste a wallet address to check live holdings and ticket eligibility.</p>
+          <div class="token-ca">
+            <span>Main token CA</span>
+            <code id="tokenMint">Awaiting backend token configuration</code>
+          </div>
+          <div class="ticket-wallet" id="ticketWallet">No wallet address selected</div>
           <div class="ticket-metrics">
             <div><span>Tokens held</span><strong id="tokensHeld">--</strong></div>
             <div><span>Eligible balls</span><strong id="eligibleBalls">0 / 80</strong></div>
@@ -145,7 +156,7 @@
             </div>
           </div>
           <div id="ticketHistory" class="ticket-history">
-            <p class="empty-message">Connect a wallet to view previous POWER tickets.</p>
+            <p class="empty-message">Look up a wallet address to view previous POWER tickets.</p>
           </div>
         </article>
       </section>

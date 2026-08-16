@@ -5,13 +5,14 @@ POWERSOL is a Powerball-style Solana token-game frontend. It retains the existin
 - Root route static server (`npm start`)
 - Existing public WebSocket source: `wss://marcelo-admin.up.railway.app`
 - Existing `state`, `holders_update`, holder patch, scheduler, and tick events
-- Optional injected Solana wallet connection via `window.solana`
+- Public wallet-address ticket lookup; no wallet-provider connection or signature is required
 
 ## Current backend capability
 
 The connected backend currently supplies distribution state and holders, but it does **not** provide authoritative Powerball cycle, ticket-assignment, draw, or payout events. The interface does not fake those values:
 
 - Holder balances are shown live from the existing feed.
+- The current main token CA is displayed from the connected backend configuration.
 - Eligibility is displayed as `floor(tokensHeld / 500,000)`, capped at 80.
 - Ticket balls, draw numbers, prizes, winner history, and past tickets remain unavailable until the backend supplies them.
 
