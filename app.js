@@ -168,10 +168,10 @@ function updateLuckyDraw() {
   const phase = cycle.phase || 'idle';
   const active = Boolean(cycle.active);
 
-  elements.cycleLabel.textContent = active ? `Lucky V1 / ${phase.replace(/_/g, ' ')}` : 'Next Lucky V1 draw';
+  elements.cycleLabel.textContent = active ? `Draw / ${phase.replace(/_/g, ' ')}` : 'Next draw';
   elements.prizePool.textContent = cycle.solUsable > 0 ? formatSol(cycle.solUsable) : '-- SOL';
   elements.drawPlayers.textContent = String(state.holders.length);
-  elements.totalEntries.textContent = 'Lucky V1';
+  elements.totalEntries.textContent = active ? 'In progress' : 'Ready';
   elements.ticketCycle.textContent = active ? phase.replace(/_/g, ' ') : 'Next draw';
 
   if (!state.selection.running) {
@@ -184,10 +184,10 @@ function updateLuckyDraw() {
     elements.winningBall.textContent = active ? 'SOL' : '?';
     elements.drawState.textContent = active ? phase.replace(/_/g, ' ') : nextTime ? 'Draw pending' : 'Awaiting draw data';
     elements.drawMessage.textContent = active
-      ? 'Lucky V1 is processing qualifying holders. The winner is revealed only after the native SOL transfer arrives.'
+      ? 'The draw is processing qualifying holders. The winner is revealed only after the native SOL transfer arrives.'
       : nextTime
-        ? 'One qualifying holder will receive the distributable native SOL when the next Lucky V1 draw begins.'
-        : 'Awaiting Lucky V1 scheduler data from the backend.';
+        ? 'One qualifying holder will receive the distributable native SOL when the next draw begins.'
+        : 'Awaiting scheduler data from the backend.';
   }
 
   if (!nextTime) {
@@ -251,7 +251,7 @@ function closeDistributionPanel() {
 
 function openLuckySelectionPanel(phase) {
   const phaseLabel = phase.replace(/_/g, ' ');
-  elements.distributionKicker.textContent = 'Lucky V1 live draw';
+  elements.distributionKicker.textContent = '$POWERSOL live draw';
   elements.distributionTitle.textContent = phase === 'distributing' ? 'Selecting holder' : 'Scanning holders';
   elements.distributionResultLabel.textContent = 'Eligible holders';
   elements.distributionWinning.textContent = String(state.holders.length);
@@ -272,7 +272,7 @@ function startLuckyPresentation(cycle) {
   elements.drawCard.classList.add('is-selecting');
   elements.winningBall.textContent = 'SOL';
   elements.drawState.textContent = cycle.phase === 'distributing' ? 'Selecting winner' : 'Scanning holders';
-  elements.drawMessage.textContent = 'Lucky V1 is selecting from the backend-qualified holder snapshot.';
+  elements.drawMessage.textContent = 'The draw is selecting from the backend-qualified holder snapshot.';
   openLuckySelectionPanel(cycle.phase || 'fetching_holders');
 }
 
@@ -287,8 +287,8 @@ function revealLuckyWinner(transfer) {
   elements.drawCard.classList.remove('is-selecting');
   elements.winningBall.textContent = 'SOL';
   elements.drawState.textContent = 'Winner confirmed';
-  elements.drawMessage.textContent = `${shorten(transfer.wallet)} receives ${formatSol(transfer.amount)} from the Lucky V1 draw.`;
-  elements.distributionKicker.textContent = 'Lucky V1 winner';
+  elements.drawMessage.textContent = `${shorten(transfer.wallet)} receives ${formatSol(transfer.amount)} from the draw.`;
+  elements.distributionKicker.textContent = '$POWERSOL winner';
   elements.distributionTitle.textContent = 'Native SOL sent';
   elements.distributionResultLabel.textContent = 'Winner wallet';
   elements.distributionWinning.textContent = shorten(transfer.wallet);
@@ -456,15 +456,15 @@ function renderTicket() {
       ? minimum > 0
         ? `${formatAmount(balance)} / ${formatAmount(minimum)} required to qualify`
         : qualifies ? 'This wallet is in the current qualifying-holder snapshot.' : 'Waiting for the current qualifying-holder snapshot.'
-      : 'Enter a wallet address to check Lucky V1 eligibility';
+      : 'Enter a wallet address to check draw eligibility';
 
     elements.ticketNumbers.replaceChildren();
     elements.ticketNumbers.classList.add('empty');
     elements.ticketNumbers.textContent = wallet
       ? qualifies
-        ? 'This wallet is eligible for one Lucky V1 holder draw entry.'
+        ? 'This wallet is eligible for one holder draw entry.'
         : 'This wallet is not in the current backend-qualified holder snapshot.'
-      : 'Enter a wallet address above to check Lucky V1 eligibility.';
+      : 'Enter a wallet address above to check draw eligibility.';
     return;
   }
 
@@ -516,7 +516,7 @@ function renderPlayerBoard() {
 
     let countText;
     if (isLuckyV1()) {
-      balls.textContent = 'Qualified for the next Lucky V1 holder draw';
+      balls.textContent = 'Qualified for the next holder draw';
       balls.classList.add('holder-balance');
       countText = 'Qualified';
     } else {
@@ -549,7 +549,7 @@ function renderPlayerBoard() {
 function renderHistory() {
   elements.winnerHistory.replaceChildren();
   if (!state.powerData.history.length) {
-    elements.winnerHistory.innerHTML = `<p class="empty-message">No authoritative ${isLuckyV1() ? 'Lucky V1' : 'POWER'} draw history has been received.</p>`;
+    elements.winnerHistory.innerHTML = `<p class="empty-message">No authoritative ${isLuckyV1() ? '$POWERSOL' : 'POWER'} draw history has been received.</p>`;
   } else {
     state.powerData.history.forEach((round) => {
       const row = document.createElement('div');
@@ -573,7 +573,7 @@ function renderHistory() {
   }
   elements.ticketHistory.innerHTML = state.connectedWallet
     ? `<p class="empty-message">Previous wallet ${isLuckyV1() ? 'draws' : 'tickets'} require authoritative history events from the backend.</p>`
-    : `<p class="empty-message">Look up a wallet address to view previous ${isLuckyV1() ? 'Lucky V1 draws' : 'POWER tickets'}.</p>`;
+    : `<p class="empty-message">Look up a wallet address to view previous ${isLuckyV1() ? '$POWERSOL draws' : 'POWER tickets'}.</p>`;
 }
 
 function hydrateFromState(data) {
