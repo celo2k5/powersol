@@ -350,13 +350,15 @@ h2 { font: 700 1.55rem/1.05 "Space Grotesk", sans-serif; letter-spacing: -.055em
 .distribution-heading button { width: 27px; height: 27px; border: 1px solid rgba(196, 181, 253, .35); border-radius: 50%; color: #fff; background: transparent; font-size: 1.25rem; line-height: 1; cursor: pointer; }
 .distribution-result { display: flex; justify-content: space-between; align-items: center; margin: 16px 0 12px; padding: 12px; border-radius: 10px; background: rgba(139, 92, 246, .16); }
 .distribution-result span { color: #d9d2eb; font: .58rem "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
-.distribution-result strong { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 50%; color: #fff; background: radial-gradient(circle at 30% 20%, #efc9ff, #9237ed 45%, #200547); box-shadow: 0 0 18px rgba(139, 92, 246, .65); font: 700 1rem "Space Grotesk", sans-serif; }
+.distribution-result strong { display: grid; min-width: 42px; height: 42px; place-items: center; padding: 0 11px; border-radius: 12px; color: #fff; background: radial-gradient(circle at 30% 20%, #efc9ff, #9237ed 45%, #200547); box-shadow: 0 0 18px rgba(139, 92, 246, .65); font: 700 .78rem "Space Grotesk", sans-serif; }
 .distribution-panel.is-selecting .distribution-result strong { animation: distributionBallRoll .25s linear infinite; }
 .distribution-rows { display: grid; gap: 7px; max-height: 172px; overflow: auto; }
 .distribution-row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid rgba(225, 220, 255, .12); font: .62rem "DM Mono", monospace; }
 .distribution-row span { overflow: hidden; color: #ded9e9; text-overflow: ellipsis; white-space: nowrap; }
 .distribution-row strong { color: var(--violet); white-space: nowrap; }
 .distribution-empty { margin: 0; color: var(--muted); font-size: .7rem; line-height: 1.5; }
+.distribution-solscan { color: var(--violet); font: 700 .62rem "DM Mono", monospace; text-decoration: none; }
+.distribution-solscan:hover { color: white; }
 @keyframes distributionBallRoll {
   from { transform: rotate(-6deg) scale(.95); }
   50% { transform: rotate(6deg) scale(1.12); }

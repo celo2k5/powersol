@@ -21,11 +21,11 @@
       <nav class="site-nav" aria-label="Main navigation">
         <a href="#players">Players</a>
         <a href="#results">Results</a>
-        <a href="#ticket">My ticket</a>
+        <a href="#ticket">Eligibility</a>
       </nav>
       <div class="topbar-right">
         <span id="socketStatus" class="socket-status"><i></i> Connecting</span>
-        <a class="wallet-button" href="#ticket">See ticket</a>
+        <a class="wallet-button" href="#ticket">Check eligibility</a>
       </div>
     </header>
 
@@ -35,13 +35,13 @@
         <div class="hero-copy">
           <p class="eyebrow">POWERSOL / HOLDER DRAW PROTOCOL</p>
           <h1>CHARGE YOUR<br /><em>HOLDINGS.</em></h1>
-          <p class="hero-description">Your token balance powers your entry. Each 500,000 tokens adds a verified ball, up to 80 per wallet, for the next POWERSOL draw.</p>
+          <p class="hero-description">Hold the main token to qualify for the next Lucky V1 draw. One eligible holder is selected on-chain and receives the distributable native SOL.</p>
           <div class="steps" aria-label="How POWERSOL works">
-            <span><b>01</b> Check holdings</span><i>+</i>
-            <span><b>02</b> Power ticket</span><i>+</i>
-            <span><b>03</b> Claim a match</span>
+            <span><b>01</b> Qualify by holding</span><i>+</i>
+            <span><b>02</b> Enter Lucky V1</span><i>+</i>
+            <span><b>03</b> Win native SOL</span>
           </div>
-          <a class="ticket-link" href="#ticket"><span>#</span> See ticket</a>
+          <a class="ticket-link" href="#ticket"><span>#</span> Check eligibility</a>
         </div>
         <div class="hero-art" aria-hidden="true">
           <img src="public/powersol-hero.png" alt="" />
@@ -68,9 +68,9 @@
           </div>
 
           <div class="draw-stats">
-            <div><span>Est. prize</span><strong id="prizePool">--</strong></div>
-            <div><span>Players</span><strong id="drawPlayers">0</strong></div>
-            <div><span>Balls in play</span><strong id="totalEntries">0</strong></div>
+            <div><span>Distributable SOL</span><strong id="prizePool">--</strong></div>
+            <div><span>Eligible holders</span><strong id="drawPlayers">0</strong></div>
+            <div><span>Draw mode</span><strong id="totalEntries">Lucky V1</strong></div>
             <div><span id="cycleLabel">Cycle unavailable</span><strong>Live</strong></div>
           </div>
           <p class="draw-marquee">VERIFIED ON-CHAIN <span>✦</span> POWERSOL DRAW ENGINE <span>✦</span> LIVE STATUS</p>
@@ -82,11 +82,11 @@
           <div class="section-heading">
             <div>
               <p class="eyebrow">WALLET TICKET LOOKUP</p>
-              <h2>Your POWERSOL ticket</h2>
+              <h2>Your Lucky V1 eligibility</h2>
             </div>
             <span id="ticketState" class="subtle-pill">Address required</span>
           </div>
-          <p class="ticket-intro">Enter the public Solana address that holds the main token. No wallet connection or signature is required.</p>
+          <p class="ticket-intro">Enter a public Solana address to check whether its main-token balance is eligible for the next Lucky V1 holder draw. No wallet connection or signature is required.</p>
           <form id="ticketLookup" class="ticket-lookup">
             <label class="visually-hidden" for="walletAddressInput">Solana wallet address</label>
             <input id="walletAddressInput" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Paste holder wallet address" />
@@ -100,20 +100,20 @@
           <div class="ticket-wallet" id="ticketWallet">No wallet address selected</div>
           <div class="ticket-metrics">
             <div><span>Tokens held</span><strong id="tokensHeld">--</strong></div>
-            <div><span>Eligible balls</span><strong id="eligibleBalls">0 / 80</strong></div>
+            <div><span>Eligibility</span><strong id="eligibleBalls">Not checked</strong></div>
             <div><span>Current cycle</span><strong id="ticketCycle">--</strong></div>
           </div>
           <div class="progress-copy"><span id="progressLabel">500,000 tokens are required for your first ball</span><strong id="progressPercent">0%</strong></div>
           <div class="progress-track"><span id="progressBar"></span></div>
-          <div id="ticketNumbers" class="ticket-balls empty">Ticket numbers will appear when the Powerball backend provides assigned entries.</div>
-          <p class="ticket-limit">Maximum: 80 numbered balls per wallet.</p>
+          <div id="ticketNumbers" class="ticket-balls empty">Lucky V1 selects one verified qualifying holder per cycle.</div>
+          <p class="ticket-limit">The qualifying balance is configured by the backend.</p>
         </aside>
       </section>
 
       <section class="fact-strip" aria-label="POWERSOL game facts">
-        <span><b>500K</b> tokens per ball</span>
-        <span><b>80</b> maximum entries</span>
-        <span><b>1–1000</b> verified draw range</span>
+        <span><b>1</b> holder selected per cycle</span>
+        <span><b>SOL</b> native payout currency</span>
+        <span><b>0.05</b> SOL treasury reserve</span>
       </section>
 
       <section id="players" class="board-section">
@@ -128,7 +128,7 @@
           </div>
         </div>
         <div class="player-board">
-          <div class="board-labels"><span>Wallet</span><span>Tokens held</span><span>Balls</span><span>Ticket entries</span></div>
+          <div class="board-labels"><span>Wallet</span><span>Tokens held</span><span>Eligibility</span><span>Lucky V1 status</span></div>
           <div id="playerRows" class="player-rows">
             <p class="empty-message">Connecting to the existing live holder data...</p>
           </div>
@@ -151,7 +151,7 @@
           <div class="section-heading">
             <div>
               <p class="eyebrow">WALLET ARCHIVE</p>
-              <h2>Previous tickets</h2>
+              <h2>Previous draws</h2>
             </div>
           </div>
           <div id="ticketHistory" class="ticket-history">
@@ -174,7 +174,7 @@
         <button id="closeDistribution" type="button" aria-label="Close distribution panel">×</button>
       </div>
       <div class="distribution-result">
-        <span>Winning ball</span>
+        <span id="distributionResultLabel">Winner</span>
         <strong id="distributionWinning">--</strong>
       </div>
       <div id="distributionRows" class="distribution-rows"></div>

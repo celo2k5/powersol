@@ -13,6 +13,11 @@ const state = {
     timer: null,
     running: false,
   },
+  lucky: {
+    seenTransfers: new Set(),
+    winnerRevealed: false,
+    closeTimer: null,
+  },
   powerData: {
     cycle: null,
     prizePool: null,
@@ -36,6 +41,7 @@ const elements = {
   distributionPanel: document.getElementById('distributionPanel'),
   distributionKicker: document.getElementById('distributionKicker'),
   distributionTitle: document.getElementById('distributionTitle'),
+  distributionResultLabel: document.getElementById('distributionResultLabel'),
   distributionWinning: document.getElementById('distributionWinning'),
   distributionRows: document.getElementById('distributionRows'),
   closeDistribution: document.getElementById('closeDistribution'),
@@ -92,6 +98,18 @@ function currentTokenMint() {
   return config.tokenMint || config.mainTokenMint || state.data?.tokenMint || state.data?.mainTokenMint || '';
 }
 
+function isLuckyV1() {
+  return state.data?.config?.robinhoodMode === 'luckyv1';
+}
+
+function minimumHolding() {
+  return Number(state.data?.config?.minHolding) || 0;
+}
+
+function formatSol(value) {
+  return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 }).format(Number(value) || 0)} SOL`;
+}
+
 function renderTokenMint() {
   const mint = currentTokenMint();
   elements.tokenMint.textContent = mint || 'Awaiting backend token configuration';
@@ -104,6 +122,11 @@ function updateConnection(status) {
 }
 
 function updateCurrentDraw() {
+  if (isLuckyV1()) {
+    updateLuckyDraw();
+    return;
+  }
+
   const cycle = state.powerData.cycle;
   const currentCycle = cycle?.round || cycle?.id || state.data?.currentCycle?.round;
   const nextTime = cycle?.nextDrawTime || state.data?.nextDistributionTime;
@@ -128,6 +151,43 @@ function updateCurrentDraw() {
         ? 'Cycle time is live. The winning number will be displayed when it is received from the backend.'
         : 'The existing backend does not currently provide Powerball cycle or draw events.';
     }
+  }
+
+  if (!nextTime) {
+    elements.countdown.textContent = '--:--:--';
+    return;
+  }
+
+  const remaining = Math.max(0, new Date(nextTime).getTime() - Date.now());
+  elements.countdown.textContent = `${String(Math.floor(remaining / 3_600_000)).padStart(2, '0')}:${String(Math.floor((remaining % 3_600_000) / 60_000)).padStart(2, '0')}:${String(Math.floor((remaining % 60_000) / 1_000)).padStart(2, '0')}`;
+}
+
+function updateLuckyDraw() {
+  const cycle = state.data?.currentCycle || {};
+  const nextTime = state.data?.nextDistributionTime;
+  const phase = cycle.phase || 'idle';
+  const active = Boolean(cycle.active);
+
+  elements.cycleLabel.textContent = active ? `Lucky V1 / ${phase.replace(/_/g, ' ')}` : 'Next Lucky V1 draw';
+  elements.prizePool.textContent = cycle.solUsable > 0 ? formatSol(cycle.solUsable) : '-- SOL';
+  elements.drawPlayers.textContent = String(state.holders.length);
+  elements.totalEntries.textContent = 'Lucky V1';
+  elements.ticketCycle.textContent = active ? phase.replace(/_/g, ' ') : 'Next draw';
+
+  if (!state.selection.running) {
+    if (state.lucky.winnerRevealed) {
+      elements.winningBall.textContent = 'SOL';
+      elements.drawState.textContent = 'Winner confirmed';
+      return;
+    }
+
+    elements.winningBall.textContent = active ? 'SOL' : '?';
+    elements.drawState.textContent = active ? phase.replace(/_/g, ' ') : nextTime ? 'Draw pending' : 'Awaiting draw data';
+    elements.drawMessage.textContent = active
+      ? 'Lucky V1 is processing qualifying holders. The winner is revealed only after the native SOL transfer arrives.'
+      : nextTime
+        ? 'One qualifying holder will receive the distributable native SOL when the next Lucky V1 draw begins.'
+        : 'Awaiting Lucky V1 scheduler data from the backend.';
   }
 
   if (!nextTime) {
@@ -187,6 +247,99 @@ function closeDistributionPanel() {
   elements.distributionPanel.classList.remove('is-open');
   elements.distributionPanel.classList.remove('is-selecting');
   elements.distributionPanel.setAttribute('aria-hidden', 'true');
+}
+
+function openLuckySelectionPanel(phase) {
+  const phaseLabel = phase.replace(/_/g, ' ');
+  elements.distributionKicker.textContent = 'Lucky V1 live draw';
+  elements.distributionTitle.textContent = phase === 'distributing' ? 'Selecting holder' : 'Scanning holders';
+  elements.distributionResultLabel.textContent = 'Eligible holders';
+  elements.distributionWinning.textContent = String(state.holders.length);
+  elements.distributionRows.replaceChildren();
+  const message = document.createElement('p');
+  message.className = 'distribution-empty';
+  message.textContent = `Phase: ${phaseLabel}. The backend chooses one qualifying holder; no winner is shown until the native SOL transfer is received.`;
+  elements.distributionRows.append(message);
+  elements.distributionPanel.classList.add('is-open', 'is-selecting');
+  elements.distributionPanel.setAttribute('aria-hidden', 'false');
+}
+
+function startLuckyPresentation(cycle) {
+  clearTimeout(state.selection.timer);
+  clearTimeout(state.lucky.closeTimer);
+  state.selection.running = true;
+  state.lucky.winnerRevealed = false;
+  elements.drawCard.classList.add('is-selecting');
+  elements.winningBall.textContent = 'SOL';
+  elements.drawState.textContent = cycle.phase === 'distributing' ? 'Selecting winner' : 'Scanning holders';
+  elements.drawMessage.textContent = 'Lucky V1 is selecting from the backend-qualified holder snapshot.';
+  openLuckySelectionPanel(cycle.phase || 'fetching_holders');
+}
+
+function revealLuckyWinner(transfer) {
+  const transferKey = transfer.signature || `${transfer.wallet}:${transfer.timestamp}:${transfer.amount}`;
+  if (state.lucky.seenTransfers.has(transferKey)) return;
+  state.lucky.seenTransfers.add(transferKey);
+  clearTimeout(state.selection.timer);
+  clearTimeout(state.lucky.closeTimer);
+  state.selection.running = false;
+  state.lucky.winnerRevealed = true;
+  elements.drawCard.classList.remove('is-selecting');
+  elements.winningBall.textContent = 'SOL';
+  elements.drawState.textContent = 'Winner confirmed';
+  elements.drawMessage.textContent = `${shorten(transfer.wallet)} receives ${formatSol(transfer.amount)} from the Lucky V1 draw.`;
+  elements.distributionKicker.textContent = 'Lucky V1 winner';
+  elements.distributionTitle.textContent = 'Native SOL sent';
+  elements.distributionResultLabel.textContent = 'Winner wallet';
+  elements.distributionWinning.textContent = shorten(transfer.wallet);
+  elements.distributionRows.replaceChildren();
+
+  const payout = document.createElement('div');
+  payout.className = 'distribution-row';
+  const wallet = document.createElement('span');
+  wallet.textContent = shorten(transfer.wallet);
+  wallet.title = transfer.wallet;
+  const amount = document.createElement('strong');
+  amount.textContent = formatSol(transfer.amount);
+  payout.append(wallet, amount);
+  elements.distributionRows.append(payout);
+
+  if (transfer.signature) {
+    const link = document.createElement('a');
+    link.href = `https://solscan.io/tx/${encodeURIComponent(transfer.signature)}`;
+    link.target = '_blank';
+    link.rel = 'noreferrer';
+    link.className = 'distribution-solscan';
+    link.textContent = 'View verified transaction on Solscan';
+    elements.distributionRows.append(link);
+  }
+
+  elements.distributionPanel.classList.add('is-open');
+  elements.distributionPanel.classList.remove('is-selecting');
+  elements.distributionPanel.setAttribute('aria-hidden', 'false');
+}
+
+function completeLuckyCycle(data) {
+  if (state.data) {
+    state.data.currentCycle = data?.cycle || { active: false, phase: 'completed' };
+    state.data.history = Array.isArray(data?.history) ? data.history : state.data.history;
+  }
+  state.powerData.history = Array.isArray(data?.history) ? data.history : state.powerData.history;
+  state.selection.running = false;
+  elements.drawCard.classList.remove('is-selecting');
+  renderHistory();
+
+  if (state.lucky.winnerRevealed) {
+    state.lucky.closeTimer = setTimeout(() => {
+      closeDistributionPanel();
+      state.lucky.winnerRevealed = false;
+      updateCurrentDraw();
+    }, 8_000);
+  } else {
+    closeDistributionPanel();
+  }
+
+  updateCurrentDraw();
 }
 
 function openWinnerSelectionPanel() {
@@ -287,6 +440,34 @@ function renderTicket() {
   const wallet = state.connectedWallet;
   const holder = state.holders.find((item) => item.wallet === wallet);
   const balance = holder?.balance || 0;
+
+  if (isLuckyV1()) {
+    const minimum = minimumHolding();
+    const qualifies = Boolean(holder) && (minimum === 0 || balance >= minimum);
+    const progress = minimum > 0 ? Math.min(100, (balance / minimum) * 100) : qualifies ? 100 : 0;
+
+    elements.ticketWallet.textContent = wallet || 'No wallet address selected';
+    elements.ticketState.textContent = wallet ? (qualifies ? 'Qualifying holder' : 'Not currently eligible') : 'Address required';
+    elements.tokensHeld.textContent = wallet ? formatAmount(balance) : '--';
+    elements.eligibleBalls.textContent = wallet ? (qualifies ? 'Eligible' : 'Not eligible') : 'Not checked';
+    elements.progressPercent.textContent = wallet ? `${Math.round(progress)}%` : '0%';
+    elements.progressBar.style.width = `${wallet ? progress : 0}%`;
+    elements.progressLabel.textContent = wallet
+      ? minimum > 0
+        ? `${formatAmount(balance)} / ${formatAmount(minimum)} required to qualify`
+        : qualifies ? 'This wallet is in the current qualifying-holder snapshot.' : 'Waiting for the current qualifying-holder snapshot.'
+      : 'Enter a wallet address to check Lucky V1 eligibility';
+
+    elements.ticketNumbers.replaceChildren();
+    elements.ticketNumbers.classList.add('empty');
+    elements.ticketNumbers.textContent = wallet
+      ? qualifies
+        ? 'This wallet is eligible for one Lucky V1 holder draw entry.'
+        : 'This wallet is not in the current backend-qualified holder snapshot.'
+      : 'Enter a wallet address above to check Lucky V1 eligibility.';
+    return;
+  }
+
   const eligible = estimatedBallCount(balance);
   const assigned = assignedEntries(wallet);
   const carried = Math.min(balance % TOKENS_PER_BALL, TOKENS_PER_BALL);
@@ -330,16 +511,24 @@ function renderPlayerBoard() {
   holders.slice(0, 100).forEach((holder) => {
     const row = document.createElement('div');
     row.className = 'player-row';
-    const entries = assignedEntries(holder.wallet);
-    const estimate = estimatedBallCount(holder.balance);
     const balls = document.createElement('div');
     balls.className = 'mini-balls';
 
-    if (entries.length) {
-      entries.slice(0, MAX_BALLS).forEach((number) => balls.append(createBall(number, false, true)));
-    } else {
-      balls.textContent = estimate ? `${estimate} eligible - awaiting assigned ticket numbers` : 'No eligible balls';
+    let countText;
+    if (isLuckyV1()) {
+      balls.textContent = 'Qualified for the next Lucky V1 holder draw';
       balls.classList.add('holder-balance');
+      countText = 'Qualified';
+    } else {
+      const entries = assignedEntries(holder.wallet);
+      const estimate = estimatedBallCount(holder.balance);
+      if (entries.length) {
+        entries.slice(0, MAX_BALLS).forEach((number) => balls.append(createBall(number, false, true)));
+      } else {
+        balls.textContent = estimate ? `${estimate} eligible - awaiting assigned ticket numbers` : 'No eligible balls';
+        balls.classList.add('holder-balance');
+      }
+      countText = entries.length ? String(entries.length) : `${estimate}*`;
     }
 
     const wallet = document.createElement('span');
@@ -351,7 +540,7 @@ function renderPlayerBoard() {
     balance.textContent = formatAmount(holder.balance);
     const count = document.createElement('span');
     count.className = 'entry-count';
-    count.textContent = entries.length ? String(entries.length) : `${estimate}*`;
+    count.textContent = countText;
     row.append(wallet, balance, count, balls);
     elements.playerRows.append(row);
   });
@@ -360,11 +549,20 @@ function renderPlayerBoard() {
 function renderHistory() {
   elements.winnerHistory.replaceChildren();
   if (!state.powerData.history.length) {
-    elements.winnerHistory.innerHTML = '<p class="empty-message">No authoritative POWER draw history has been received.</p>';
+    elements.winnerHistory.innerHTML = `<p class="empty-message">No authoritative ${isLuckyV1() ? 'Lucky V1' : 'POWER'} draw history has been received.</p>`;
   } else {
     state.powerData.history.forEach((round) => {
       const row = document.createElement('div');
       row.className = 'history-row';
+      if (isLuckyV1()) {
+        row.append(
+          createBall('SOL', true),
+          Object.assign(document.createElement('span'), { textContent: `Cycle #${round.round ?? '--'} · ${round.holdersCount ?? 0} qualifying holders · ${round.status || 'completed'}` }),
+          Object.assign(document.createElement('strong'), { textContent: round.solSpent != null ? formatSol(round.solSpent) : '-- SOL' })
+        );
+        elements.winnerHistory.append(row);
+        return;
+      }
       row.append(
         createBall(round.winningNumber, true),
         Object.assign(document.createElement('span'), { textContent: `Cycle #${round.cycle} - ${round.winners?.length || 0} winner(s)` }),
@@ -374,14 +572,16 @@ function renderHistory() {
     });
   }
   elements.ticketHistory.innerHTML = state.connectedWallet
-    ? '<p class="empty-message">Previous wallet tickets require Powerball history events from the backend.</p>'
-    : '<p class="empty-message">Look up a wallet address to view previous POWER tickets.</p>';
+    ? `<p class="empty-message">Previous wallet ${isLuckyV1() ? 'draws' : 'tickets'} require authoritative history events from the backend.</p>`
+    : `<p class="empty-message">Look up a wallet address to view previous ${isLuckyV1() ? 'Lucky V1 draws' : 'POWER tickets'}.</p>`;
 }
 
 function hydrateFromState(data) {
   state.data = data;
   state.holders = Array.isArray(data.holders) ? data.holders : [];
+  state.powerData.history = Array.isArray(data.history) ? data.history : state.powerData.history;
   renderTokenMint();
+  if (isLuckyV1() && data.currentCycle?.active) startLuckyPresentation(data.currentCycle);
   updateCurrentDraw();
   renderTicket();
   renderPlayerBoard();
@@ -409,6 +609,7 @@ function handleMessage(message) {
       break;
     case 'holders_update':
       state.holders = Array.isArray(data) ? data : [];
+      if (isLuckyV1() && state.selection.running) openLuckySelectionPanel(state.data?.currentCycle?.phase || 'fetching_holders');
       renderTicket();
       renderPlayerBoard();
       updateCurrentDraw();
@@ -423,8 +624,38 @@ function handleMessage(message) {
     }
     case 'tick':
     case 'scheduler_state':
-      if (state.data) state.data.nextDistributionTime = data?.nextDistributionTime;
+      if (state.data) {
+        state.data.nextDistributionTime = data?.nextDistributionTime;
+        if (data?.schedulerRunning != null) state.data.schedulerRunning = data.schedulerRunning;
+      }
       updateCurrentDraw();
+      break;
+    case 'cycle_start':
+      if (isLuckyV1()) {
+        if (state.data) state.data.currentCycle = data || {};
+        startLuckyPresentation(data || {});
+        updateCurrentDraw();
+        break;
+      }
+      break;
+    case 'cycle_update':
+      if (isLuckyV1()) {
+        if (state.data) state.data.currentCycle = data || {};
+        if (data?.active && data.phase === 'distributing') startLuckyPresentation(data);
+        updateCurrentDraw();
+        break;
+      }
+      break;
+    case 'transfer':
+      if (isLuckyV1() && data?.tokenMint === 'native' && !['failed', 'skipped'].includes(data.status)) {
+        revealLuckyWinner(data);
+      }
+      break;
+    case 'cycle_end':
+      if (isLuckyV1()) {
+        completeLuckyCycle(data);
+        break;
+      }
       break;
     case 'power_state':
     case 'powersol_state':
@@ -498,5 +729,8 @@ elements.ticketLookup.addEventListener('submit', lookupWallet);
 elements.walletSearch.addEventListener('input', renderPlayerBoard);
 elements.closeDistribution.addEventListener('click', closeDistributionPanel);
 window.addEventListener('powersol:draw', (event) => animateWinnerSelection(event.detail));
+window.addEventListener('powersol:message', (event) => {
+  if (event.detail?.type) handleMessage(event.detail);
+});
 setInterval(updateCurrentDraw, 1_000);
 connectSocket();
