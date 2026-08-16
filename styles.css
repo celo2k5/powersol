@@ -153,6 +153,10 @@ h2 { font: 400 1.75rem/1 Anton, sans-serif; letter-spacing: .02em; text-transfor
   box-shadow: -8px 10px 0 rgba(55, 20, 93, .28), 0 0 35px rgba(113, 39, 217, .12);
   transform: rotate(.6deg);
 }
+.draw-card.is-selecting {
+  border-color: var(--cyan);
+  box-shadow: -8px 10px 0 rgba(55, 20, 93, .28), 0 0 42px rgba(30, 228, 208, .28);
+}
 .section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
 .draw-kicker { margin: 0; color: #f3edf8; font: 700 .67rem "DM Mono", monospace; letter-spacing: .12em; text-transform: uppercase; }
 .draw-kicker span { display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 9px var(--pink); }
@@ -180,6 +184,9 @@ h2 { font: 400 1.75rem/1 Anton, sans-serif; letter-spacing: .02em; text-transfor
   border-radius: 50%;
   box-shadow: inset 0 0 70px rgba(109, 46, 231, .28);
 }
+.draw-card.is-selecting .machine::before { animation: selectionSpin 1.53s linear; }
+.draw-card.is-selecting .number-ball.large { animation: winnerPulse .34s ease-in-out infinite alternate; }
+.draw-card.is-selecting .orbit-ball { animation: orbitJolt .34s ease-in-out infinite alternate; }
 .number-ball {
   position: absolute;
   z-index: 2;
@@ -206,6 +213,18 @@ h2 { font: 400 1.75rem/1 Anton, sans-serif; letter-spacing: .02em; text-transfor
 .draw-stats strong { display: block; margin-top: 8px; color: white; font-size: .78rem; }
 .draw-marquee { margin: 0 -22px; padding: 12px; color: rgba(207, 196, 234, .67); background: #08060e; font: 700 .53rem "DM Mono", monospace; letter-spacing: .38em; text-align: center; text-transform: uppercase; }
 .draw-marquee span { color: var(--cyan); }
+@keyframes selectionSpin {
+  from { transform: rotate(0deg) scale(.98); border-color: rgba(209, 183, 255, .35); }
+  to { transform: rotate(360deg) scale(1.04); border-color: rgba(30, 228, 208, .8); }
+}
+@keyframes winnerPulse {
+  from { transform: scale(.92); box-shadow: inset -8px -10px 14px rgba(0,0,0,.35), 0 0 22px var(--purple); }
+  to { transform: scale(1.12); box-shadow: inset -8px -10px 14px rgba(0,0,0,.35), 0 0 42px var(--cyan); }
+}
+@keyframes orbitJolt {
+  from { transform: translateY(-4px) rotate(-4deg); }
+  to { transform: translateY(4px) rotate(4deg); }
+}
 
 .fact-strip { display: flex; gap: 34px; margin: 0 calc(50% - 50vw); padding: 13px max(24px, calc((100vw - 1280px) / 2)); overflow: hidden; color: #0a0a12; background: linear-gradient(90deg, var(--purple), var(--cyan), var(--purple)); font: 800 .59rem "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
 .draw-grid { display: block; }

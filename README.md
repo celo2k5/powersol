@@ -44,6 +44,16 @@ When available, broadcast one of `power_state`, `powersol_state`, or `powerball_
 
 Draw events can also arrive as `power_draw`, `powersol_draw`, or `powerball_draw`.
 
+## Winner selection animation
+
+The draw display animates when it receives any of these event types:
+
+- `power_draw`, `powersol_draw`, or `powerball_draw`
+- `test_event` or `test_draw`
+- `winner_selection`, `winner_selected`, `draw_start`, or `draw_started`
+
+The event payload may provide a verified winning ball as `winningNumber`, `number`, `winningBall`, `winner.number`, or `result.winningNumber`. The animation cycles display-only numbers, then settles on that authoritative value. A test event without a valid number still animates, but it returns to an awaiting-result state rather than fabricating a winner.
+
 ## Run locally
 
 ```bash

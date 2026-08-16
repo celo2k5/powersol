@@ -46,7 +46,7 @@
         <div class="hero-art" aria-hidden="true">
           <img src="public/powersol-hero.png" alt="" />
         </div>
-        <article class="draw-card">
+        <article id="drawCard" class="draw-card">
           <div class="section-heading">
             <p class="draw-kicker"><span></span> Next draw</p>
             <span id="drawState" class="draw-state">Awaiting draw data</span>
@@ -62,7 +62,7 @@
             <div id="winningBall" class="number-ball purple large">?</div>
             <div class="countdown-wrap">
               <span>Round closes in</span>
-              <strong id="countdown">--:--:--</strong>
+              <strong id="countdown" aria-live="polite">--:--:--</strong>
               <p id="drawMessage">Awaiting the current round from the backend.</p>
             </div>
           </div>

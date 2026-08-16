@@ -9,6 +9,10 @@ const state = {
   data: null,
   holders: [],
   connectedWallet: '',
+  selection: {
+    timer: null,
+    running: false,
+  },
   powerData: {
     cycle: null,
     prizePool: null,
@@ -28,6 +32,7 @@ const elements = {
   totalEntries: document.getElementById('totalEntries'),
   winningBall: document.getElementById('winningBall'),
   drawMessage: document.getElementById('drawMessage'),
+  drawCard: document.getElementById('drawCard'),
   ticketWallet: document.getElementById('ticketWallet'),
   ticketState: document.getElementById('ticketState'),
   tokensHeld: document.getElementById('tokensHeld'),
@@ -105,24 +110,87 @@ function updateCurrentDraw() {
   elements.totalEntries.textContent = String(estimatedEntries);
   elements.ticketCycle.textContent = currentCycle ? `#${currentCycle}` : '--';
 
-  if (winner != null) {
-    elements.winningBall.textContent = winner;
-    elements.drawState.textContent = 'Winning number';
-    elements.drawMessage.textContent = 'The current cycle has settled. Verified winners and settlement amounts appear in draw history.';
-  } else {
-    elements.winningBall.textContent = '?';
-    elements.drawState.textContent = nextTime ? 'Draw pending' : 'Awaiting draw data';
-    elements.drawMessage.textContent = nextTime
-      ? 'Cycle time is live. The winning number will be displayed when it is received from the backend.'
-      : 'The existing backend does not currently provide Powerball cycle or draw events.';
+  if (!state.selection.running) {
+    if (winner != null) {
+      elements.winningBall.textContent = winner;
+      elements.drawState.textContent = 'Winning number';
+      elements.drawMessage.textContent = 'The current cycle has settled. Verified winners and settlement amounts appear in draw history.';
+    } else {
+      elements.winningBall.textContent = '?';
+      elements.drawState.textContent = nextTime ? 'Draw pending' : 'Awaiting draw data';
+      elements.drawMessage.textContent = nextTime
+        ? 'Cycle time is live. The winning number will be displayed when it is received from the backend.'
+        : 'The existing backend does not currently provide Powerball cycle or draw events.';
+    }
   }
 
   if (!nextTime) {
     elements.countdown.textContent = '--:--:--';
     return;
   }
+
   const remaining = Math.max(0, new Date(nextTime).getTime() - Date.now());
   elements.countdown.textContent = `${String(Math.floor(remaining / 3_600_000)).padStart(2, '0')}:${String(Math.floor((remaining % 3_600_000) / 60_000)).padStart(2, '0')}:${String(Math.floor((remaining % 60_000) / 1_000)).padStart(2, '0')}`;
+}
+
+function winningNumberFrom(data) {
+  const value = typeof data === 'object' && data
+    ? data.winningNumber ?? data.number ?? data.winningBall ?? data.winner?.number ?? data.result?.winningNumber ?? data.result?.number
+    : data;
+  const number = Number(value);
+  return Number.isInteger(number) && number >= 1 && number <= 1_000 ? number : null;
+}
+
+function isWinnerSelectionEvent(type, data) {
+  const eventType = String(type || '').toLowerCase();
+  return [
+    'power_draw',
+    'powersol_draw',
+    'powerball_draw',
+    'test_event',
+    'test_draw',
+    'winner_selection',
+    'winner_selected',
+    'draw_start',
+    'draw_started',
+  ].includes(eventType) || eventType.includes('test') || winningNumberFrom(data) != null;
+}
+
+function animateWinnerSelection(data) {
+  const winningNumber = winningNumberFrom(data);
+  const drawData = data?.result && typeof data.result === 'object' ? { ...data, ...data.result } : data;
+  const frames = 18;
+  let frame = 0;
+
+  clearInterval(state.selection.timer);
+  state.selection.running = true;
+  elements.drawCard.classList.add('is-selecting');
+  elements.drawState.textContent = 'Selecting winner';
+  elements.drawMessage.textContent = 'The PowerSol balls are in motion. Waiting for the verified draw result.';
+
+  state.selection.timer = setInterval(() => {
+    frame += 1;
+    elements.winningBall.textContent = String(Math.floor(Math.random() * 1_000) + 1);
+
+    if (frame < frames) return;
+
+    clearInterval(state.selection.timer);
+    state.selection.timer = null;
+    state.selection.running = false;
+    elements.drawCard.classList.remove('is-selecting');
+
+    if (winningNumber == null) {
+      elements.winningBall.textContent = '?';
+      elements.drawState.textContent = 'Draw received';
+      elements.drawMessage.textContent = 'The selection event arrived without a winning number. Awaiting the verified result.';
+      return;
+    }
+
+    mergePowerData(drawData);
+    state.powerData.winningNumber = winningNumber;
+    updateCurrentDraw();
+    renderHistory();
+  }, 85);
 }
 
 function renderTicket() {
@@ -280,10 +348,16 @@ function handleMessage(message) {
     case 'power_draw':
     case 'powersol_draw':
     case 'powerball_draw':
-      mergePowerData({ ...data, winningNumber: data?.winningNumber ?? data?.number });
-      updateCurrentDraw();
-      renderHistory();
+    case 'test_event':
+    case 'test_draw':
+    case 'winner_selection':
+    case 'winner_selected':
+    case 'draw_start':
+    case 'draw_started':
+      animateWinnerSelection(data);
       break;
+    default:
+      if (isWinnerSelectionEvent(type, data)) animateWinnerSelection(data);
   }
 }
 
@@ -332,5 +406,6 @@ function lookupWallet(event) {
 
 elements.ticketLookup.addEventListener('submit', lookupWallet);
 elements.walletSearch.addEventListener('input', renderPlayerBoard);
+window.addEventListener('powersol:draw', (event) => animateWinnerSelection(event.detail));
 setInterval(updateCurrentDraw, 1_000);
 connectSocket();
