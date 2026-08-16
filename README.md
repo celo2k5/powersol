@@ -54,7 +54,7 @@ The draw display animates when it receives any of these event types:
 
 The event payload may provide a verified winning ball as `winningNumber`, `number`, `winningBall`, `winner.number`, or `result.winningNumber`. The animation cycles display-only numbers, then settles on that authoritative value. A test event without a valid number still animates, but it returns to an awaiting-result state rather than fabricating a winner.
 
-After a verified result, POWERSOL opens a small distribution panel. Send payout rows in `winners`, `distributions`, or `payouts` (or the corresponding `result.*` field). Each row may use `wallet`, `address`, `owner`, or `recipient`, along with `amount`, `payout`, `reward`, or `value`.
+When winner selection begins, POWERSOL opens a center-screen overlay for every visitor. It rolls display-only numbers during the selection, then becomes the distribution reveal after the verified result. Send payout rows in `winners`, `distributions`, or `payouts` (or the corresponding `result.*` field). Each row may use `wallet`, `address`, `owner`, or `recipient`, along with `amount`, `payout`, `reward`, or `value`.
 
 ## Run locally
 

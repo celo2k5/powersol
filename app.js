@@ -34,6 +34,8 @@ const elements = {
   drawMessage: document.getElementById('drawMessage'),
   drawCard: document.getElementById('drawCard'),
   distributionPanel: document.getElementById('distributionPanel'),
+  distributionKicker: document.getElementById('distributionKicker'),
+  distributionTitle: document.getElementById('distributionTitle'),
   distributionWinning: document.getElementById('distributionWinning'),
   distributionRows: document.getElementById('distributionRows'),
   closeDistribution: document.getElementById('closeDistribution'),
@@ -183,11 +185,27 @@ function distributionEntriesFrom(data) {
 
 function closeDistributionPanel() {
   elements.distributionPanel.classList.remove('is-open');
+  elements.distributionPanel.classList.remove('is-selecting');
   elements.distributionPanel.setAttribute('aria-hidden', 'true');
+}
+
+function openWinnerSelectionPanel() {
+  elements.distributionKicker.textContent = 'Power chamber active';
+  elements.distributionTitle.textContent = 'Selecting winner';
+  elements.distributionWinning.textContent = '?';
+  elements.distributionRows.replaceChildren();
+  const message = document.createElement('p');
+  message.className = 'distribution-empty';
+  message.textContent = 'A verified PowerSol ball is being selected. The final winner and payout distribution will appear here.';
+  elements.distributionRows.append(message);
+  elements.distributionPanel.classList.add('is-open', 'is-selecting');
+  elements.distributionPanel.setAttribute('aria-hidden', 'false');
 }
 
 function openDistributionPanel(winningNumber, data) {
   const entries = distributionEntriesFrom(data);
+  elements.distributionKicker.textContent = 'Draw complete';
+  elements.distributionTitle.textContent = 'Distribution';
   elements.distributionWinning.textContent = String(winningNumber);
   elements.distributionRows.replaceChildren();
 
@@ -211,6 +229,7 @@ function openDistributionPanel(winningNumber, data) {
   }
 
   elements.distributionPanel.classList.add('is-open');
+  elements.distributionPanel.classList.remove('is-selecting');
   elements.distributionPanel.setAttribute('aria-hidden', 'false');
 }
 
@@ -222,14 +241,16 @@ function animateWinnerSelection(data) {
 
   clearTimeout(state.selection.timer);
   state.selection.running = true;
-  closeDistributionPanel();
+  openWinnerSelectionPanel();
   elements.drawCard.classList.add('is-selecting');
   elements.drawState.textContent = 'Selecting winner';
   elements.drawMessage.textContent = 'The PowerSol balls are in motion. Waiting for the verified draw result.';
 
   function spin() {
     frame += 1;
-    elements.winningBall.textContent = String(Math.floor(Math.random() * 1_000) + 1);
+    const displayNumber = String(Math.floor(Math.random() * 1_000) + 1);
+    elements.winningBall.textContent = displayNumber;
+    elements.distributionWinning.textContent = displayNumber;
 
     if (frame < frames) {
       const delay = 65 + Math.round((frame / frames) ** 2 * 190);
@@ -245,6 +266,10 @@ function animateWinnerSelection(data) {
       elements.winningBall.textContent = '?';
       elements.drawState.textContent = 'Draw received';
       elements.drawMessage.textContent = 'The selection event arrived without a winning number. Awaiting the verified result.';
+      elements.distributionKicker.textContent = 'Result pending';
+      elements.distributionTitle.textContent = 'Awaiting winner';
+      elements.distributionWinning.textContent = '?';
+      elements.distributionPanel.classList.remove('is-selecting');
       return;
     }
 
