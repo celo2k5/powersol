@@ -1,6 +1,6 @@
-# POWERSOL Frontend
+# POWERBALL Frontend
 
-POWERSOL is a Lucky V1 Solana holder-draw frontend. It uses the public WebSocket runtime:
+POWERBALL is a Lucky V1 Solana holder-draw frontend. It uses the public WebSocket runtime:
 
 - Root route static server (`npm start`)
 - Existing public WebSocket source: `wss://marcelo-admin.up.railway.app`

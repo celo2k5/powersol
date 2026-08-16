@@ -518,7 +518,7 @@ function closeDistributionPanel() {
 
 function openLuckySelectionPanel(phase) {
   const phaseLabel = String(phase || 'fetching_holders').replace(/_/g, ' ');
-  elements.distributionKicker.textContent = '$POWERSOL live draw';
+  elements.distributionKicker.textContent = 'POWERBALL live draw';
   elements.distributionTitle.textContent = phase === 'distributing' ? 'Selecting ball' : 'Scanning holders';
   elements.distributionResultLabel.textContent = 'Eligible balls';
   elements.distributionWinning.textContent = String(currentHolderSnapshot().length);
@@ -593,7 +593,7 @@ function showLuckyWinner(transfer) {
   elements.winningBall.textContent = winnerBall;
   elements.drawState.textContent = 'Winner confirmed';
   elements.drawMessage.textContent = `${shorten(transfer.wallet)} is the selected ball and receives ${formatSol(transfer.amount)}.`;
-  elements.distributionKicker.textContent = '$POWERSOL winner';
+  elements.distributionKicker.textContent = 'POWERBALL winner';
   elements.distributionTitle.textContent = 'Winning ball selected';
   elements.distributionResultLabel.textContent = 'Winning ball';
   elements.distributionWinning.textContent = winnerBall;
@@ -687,7 +687,7 @@ function showLuckyFailure(error) {
   elements.winningBall.textContent = '?';
   elements.drawState.textContent = 'Draw failed';
   elements.drawMessage.textContent = error || 'No winner was selected because the backend could not complete the draw.';
-  elements.distributionKicker.textContent = '$POWERSOL draw';
+  elements.distributionKicker.textContent = 'POWERBALL draw';
   elements.distributionTitle.textContent = 'No winner selected';
   elements.distributionResultLabel.textContent = 'Status';
   elements.distributionWinning.textContent = 'FAILED';
@@ -949,7 +949,7 @@ function renderPlayerBoard() {
 function renderHistory() {
   elements.winnerHistory.replaceChildren();
   if (!state.powerData.history.length) {
-    elements.winnerHistory.innerHTML = `<p class="empty-message">No authoritative ${isLuckyV1() ? '$POWERSOL' : 'POWER'} draw history has been received.</p>`;
+    elements.winnerHistory.innerHTML = `<p class="empty-message">No authoritative ${isLuckyV1() ? 'POWERBALL' : 'POWER'} draw history has been received.</p>`;
   } else {
     state.powerData.history.forEach((round) => {
       const row = document.createElement('div');
@@ -978,7 +978,7 @@ function renderHistory() {
   }
   elements.ticketHistory.innerHTML = state.connectedWallet
     ? `<p class="empty-message">Previous wallet ${isLuckyV1() ? 'draws' : 'tickets'} require authoritative history events from the backend.</p>`
-    : `<p class="empty-message">Look up a wallet address to view previous ${isLuckyV1() ? '$POWERSOL draws' : 'POWER tickets'}.</p>`;
+    : `<p class="empty-message">Look up a wallet address to view previous ${isLuckyV1() ? 'POWERBALL draws' : 'POWER tickets'}.</p>`;
 }
 
 function hydrateFromState(data) {

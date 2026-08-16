@@ -75,5 +75,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, () => {
-  console.log(`POWERSOL frontend listening on http://localhost:${port}`);
+  console.log(`POWERBALL frontend listening on http://localhost:${port}`);
 });

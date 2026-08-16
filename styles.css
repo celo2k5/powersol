@@ -1,15 +1,15 @@
 :root {
-  --bg: #090713;
-  --panel: #141026;
-  --panel-dark: #0d0a1a;
-  --ink: #ffffff;
-  --muted: #c1bed0;
-  --line: rgba(225, 220, 255, .26);
-  --purple: #8b5cf6;
-  --violet: #c4b5fd;
-  --cyan: #b7a0ff;
-  --electric: #77f5ee;
-  --pink: #ed83c9;
+  --bg: #fbfaff;
+  --panel: #ffffff;
+  --panel-dark: #f4efff;
+  --ink: #24133f;
+  --muted: #726784;
+  --line: rgba(89, 57, 137, .18);
+  --purple: #6d28d9;
+  --violet: #7c3aed;
+  --cyan: #9333ea;
+  --electric: #a855f7;
+  --pink: #c026d3;
 }
 
 * { box-sizing: border-box; }
@@ -856,3 +856,176 @@ h2 { font: 700 1.55rem/1.05 "Space Grotesk", sans-serif; letter-spacing: -.055em
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* White and violet theme */
+html {
+  color-scheme: light;
+  background: var(--bg);
+}
+
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 80% 16%, rgba(124, 58, 237, .12), transparent 28rem),
+    radial-gradient(circle at 14% 62%, rgba(168, 85, 247, .1), transparent 30rem),
+    radial-gradient(circle at 50% 105%, rgba(192, 38, 211, .07), transparent 36rem),
+    var(--bg);
+}
+
+body::before {
+  opacity: .12;
+  background:
+    linear-gradient(90deg, rgba(251, 250, 255, .96), rgba(251, 250, 255, .28)),
+    url("public/powersol-lightning.png") right -4rem top -3rem / min(670px, 66vw) auto no-repeat;
+}
+
+.topbar { border-bottom-color: rgba(89, 57, 137, .14); }
+.brand-chain { color: #6b5a83; }
+.site-nav { border-color: rgba(89, 57, 137, .16); background: rgba(109, 40, 217, .04); }
+.site-nav a { color: #5f5075; }
+.site-nav a:hover { color: var(--purple); background: rgba(124, 58, 237, .1); }
+.wallet-button { border-color: rgba(109, 40, 217, .38); color: #fff; background: var(--purple); box-shadow: 0 8px 20px rgba(109, 40, 217, .2); }
+.wallet-button:hover { background: #5b21b6; }
+
+.hero::after { border-color: rgba(124, 58, 237, .14); background-image: radial-gradient(rgba(124, 58, 237, .2) 1px, transparent 1.5px); }
+.hero-number { color: rgba(124, 58, 237, .08); }
+h1 em { color: var(--purple); }
+.hero-description { color: #5f5470; }
+.steps { color: #5b4c70; }
+.steps b { border-color: rgba(124, 58, 237, .42); color: var(--purple); }
+.ticket-link { border-color: rgba(109, 40, 217, .34); color: #fff; background: var(--purple); box-shadow: 0 8px 20px rgba(109, 40, 217, .18); }
+.ticket-link:hover { background: #5b21b6; }
+.hero-art { opacity: .12; mix-blend-mode: multiply; }
+
+.draw-card {
+  border-color: rgba(124, 58, 237, .24);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .98), rgba(247, 243, 255, .98));
+  box-shadow: 0 20px 60px rgba(70, 38, 112, .14);
+}
+.draw-card.is-selecting { box-shadow: 0 20px 60px rgba(70, 38, 112, .14), 0 0 44px rgba(109, 40, 217, .18); }
+.draw-kicker { color: #4f3370; }
+.draw-kicker span { box-shadow: 0 0 9px rgba(124, 58, 237, .4); }
+.draw-state, .subtle-pill { border-color: rgba(124, 58, 237, .28); color: var(--purple); }
+
+.machine {
+  border-color: rgba(124, 58, 237, .18);
+  background:
+    radial-gradient(ellipse at 50% 84%, rgba(124, 58, 237, .2), transparent 54%),
+    linear-gradient(180deg, rgba(255, 255, 255, .88), rgba(241, 234, 255, .92));
+  box-shadow: inset 0 0 90px rgba(109, 40, 217, .08);
+}
+.machine::before {
+  border-color: rgba(124, 58, 237, .26);
+  box-shadow: inset 0 0 78px rgba(109, 40, 217, .1), inset 0 -30px 70px rgba(76, 29, 149, .08), 0 16px 34px rgba(76, 29, 149, .1);
+}
+.machine-grid {
+  background-image:
+    linear-gradient(rgba(124, 58, 237, .08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, .08) 1px, transparent 1px),
+    radial-gradient(circle, rgba(124, 58, 237, .28) 1px, transparent 1.5px);
+}
+.machine-grid::after { background: linear-gradient(115deg, transparent 12%, rgba(168, 85, 247, .14) 48%, transparent 68%); }
+.ambient-number { color: rgba(124, 58, 237, .1); text-shadow: 0 0 30px rgba(109, 40, 217, .16); }
+.ambient-number-07 { color: rgba(168, 85, 247, .1); }
+.ambient-number-03 { color: rgba(192, 38, 211, .08); }
+.grid-readout { color: rgba(91, 73, 116, .56); }
+.grid-readout-bottom { color: rgba(147, 51, 234, .58); }
+.machine-glow-one { background: rgba(124, 58, 237, .16); box-shadow: 0 0 90px 30px rgba(124, 58, 237, .1); }
+.machine-glow-two { background: rgba(168, 85, 247, .14); box-shadow: 0 0 80px 24px rgba(168, 85, 247, .1); }
+.energy-ring { border-color: rgba(124, 58, 237, .22); }
+.energy-ring::before, .energy-ring::after { border-color: rgba(168, 85, 247, .72); background: #fff; box-shadow: 0 0 15px rgba(168, 85, 247, .5); }
+.energy-ring::after { border-color: rgba(192, 38, 211, .72); box-shadow: 0 0 15px rgba(192, 38, 211, .45); }
+.energy-ring-inner { border-color: rgba(168, 85, 247, .25); }
+.machine-chip, .machine-phase-readout { color: rgba(75, 54, 99, .72); }
+.machine-phase-readout span { color: rgba(124, 58, 237, .58); }
+.machine-phase-readout b { color: var(--purple); }
+.ball-board {
+  border-color: rgba(124, 58, 237, .18);
+  background:
+    linear-gradient(90deg, transparent 49.7%, rgba(124, 58, 237, .12) 50%, transparent 50.3%),
+    radial-gradient(ellipse at 50% 25%, rgba(124, 58, 237, .1), transparent 54%);
+  box-shadow: inset 0 0 34px rgba(109, 40, 217, .1), inset 0 -30px 30px rgba(76, 29, 149, .08);
+}
+.ball-board::before, .ball-board::after { background: linear-gradient(transparent, rgba(124, 58, 237, .24), transparent); }
+.board-rail { border-color: rgba(124, 58, 237, .16); }
+.board-scanline { background: linear-gradient(90deg, transparent, rgba(168, 85, 247, .16), transparent); }
+.draw-card[data-phase="selecting"] .energy-ring { border-color: rgba(124, 58, 237, .46); }
+.draw-card[data-phase="locking"] .machine { box-shadow: inset 0 0 90px rgba(168, 85, 247, .18), 0 0 42px rgba(168, 85, 247, .2); }
+.draw-card[data-phase="locking"] .energy-ring { border-color: rgba(168, 85, 247, .64); }
+.draw-card[data-phase="winner"] .machine { box-shadow: inset 0 0 90px rgba(192, 38, 211, .14), 0 0 42px rgba(168, 85, 247, .2); }
+.draw-card[data-phase="winner"] .energy-ring { border-color: rgba(168, 85, 247, .58); }
+
+.number-ball {
+  border-color: rgba(255, 255, 255, .9);
+  box-shadow: inset -8px -9px 13px rgba(58, 35, 89, .18), inset 5px 4px 8px rgba(255, 255, 255, .8), 0 8px 13px rgba(58, 35, 89, .18), 0 0 19px rgba(168, 85, 247, .2);
+}
+.number-ball.purple { background: radial-gradient(circle at 30% 20%, #f5f3ff, #7c3aed 45%, #4c1d95); box-shadow: inset -9px -11px 16px rgba(58, 35, 89, .3), inset 5px 4px 8px rgba(255, 255, 255, .3), 0 9px 16px rgba(58, 35, 89, .2), 0 0 28px rgba(124, 58, 237, .45); }
+.orbit-ball { box-shadow: inset -7px -8px 12px rgba(58, 35, 89, .16), inset 4px 3px 7px rgba(255, 255, 255, .8), 0 8px 13px rgba(58, 35, 89, .16), 0 0 20px rgba(168, 85, 247, .35); }
+.orbit-sol { background: radial-gradient(circle at 30% 20%, #f5f3ff, #9333ea 47%, #4c1d95); box-shadow: inset -8px -9px 13px rgba(58, 35, 89, .25), inset 4px 4px 7px rgba(255, 255, 255, .4), 0 8px 14px rgba(58, 35, 89, .18), 0 0 25px rgba(192, 38, 211, .38); }
+.countdown-wrap strong { color: var(--ink); text-shadow: 0 5px 18px rgba(109, 40, 217, .14); }
+#drawMessage { color: #625674; }
+.draw-stats { background: rgba(255, 255, 255, .7); }
+.draw-stats div { border-right-color: rgba(89, 57, 137, .12); }
+.draw-stats span { color: #776b87; }
+.draw-stats strong { color: var(--ink); }
+.draw-marquee { color: rgba(91, 73, 116, .72); border-top-color: rgba(89, 57, 137, .12); background: rgba(124, 58, 237, .035); }
+
+.fact-strip { border-color: rgba(124, 58, 237, .16); color: #655875; background: rgba(255, 255, 255, .72); }
+.ticket-card, .board-section, .history-card { background: linear-gradient(145deg, rgba(255, 255, 255, .98), rgba(247, 243, 255, .96)); box-shadow: 0 16px 50px rgba(70, 38, 112, .1); }
+.ticket-card h2, .board-section h2, .history-card h2 { color: var(--ink); }
+.ticket-intro { color: #665a76; }
+.ticket-lookup input { border-color: rgba(124, 58, 237, .28); color: var(--ink); background: #fff; }
+.ticket-lookup input::placeholder { color: #9a8eaa; }
+.ticket-lookup input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(109, 40, 217, .12); }
+.ticket-lookup button { border-color: var(--purple); color: #fff; background: var(--purple); }
+.ticket-lookup button:hover { color: #fff; background: #5b21b6; }
+.lookup-message { color: #766a85; }
+.token-ca { border-color: rgba(168, 85, 247, .24); background: rgba(124, 58, 237, .05); }
+.token-ca code { color: #4e3c67; }
+.ticket-metrics div { background: rgba(255, 255, 255, .74); }
+.progress-track { background: rgba(109, 40, 217, .1); }
+
+.board-tools input { color: var(--ink); background: #fff; outline-color: var(--purple); }
+.player-row { border-color: rgba(124, 58, 237, .12); background: rgba(255, 255, 255, .68); }
+.roster-panel {
+  border-color: rgba(124, 58, 237, .18);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(124, 58, 237, .1), transparent 34%),
+    linear-gradient(145deg, rgba(255, 255, 255, .96), rgba(247, 243, 255, .92));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 15px 40px rgba(70, 38, 112, .08);
+}
+.roster-heading h3 { color: var(--ink); }
+.ball-roster { scrollbar-color: rgba(124, 58, 237, .35) transparent; }
+.roster-card { border-color: rgba(124, 58, 237, .14); background: rgba(255, 255, 255, .82); }
+.roster-card::before { background: linear-gradient(115deg, transparent 24%, rgba(124, 58, 237, .08) 50%, transparent 76%); }
+.roster-card.is-locked { border-color: var(--electric); background: linear-gradient(145deg, rgba(243, 232, 255, .94), rgba(250, 247, 255, .98)); box-shadow: 0 0 0 1px rgba(168, 85, 247, .14), 0 0 34px rgba(168, 85, 247, .24); }
+.roster-card.is-winner { border-color: var(--purple); background: linear-gradient(145deg, rgba(237, 233, 254, .98), rgba(250, 245, 255, .98)); box-shadow: 0 0 0 1px rgba(124, 58, 237, .16), 0 0 48px rgba(124, 58, 237, .3), 0 0 100px rgba(192, 38, 211, .12); }
+.roster-ball { color: #3b2753; box-shadow: inset -6px -7px 10px rgba(58, 35, 89, .16), inset 4px 3px 7px rgba(255, 255, 255, .86), 0 6px 12px rgba(58, 35, 89, .16), 0 0 16px rgba(168, 85, 247, .24); }
+.roster-card.is-locked .roster-ball { color: #fff; background: radial-gradient(circle at 30% 20%, #faf5ff, #a855f7 46%, #6d28d9); box-shadow: inset -7px -8px 11px rgba(58, 35, 89, .24), 0 0 28px rgba(168, 85, 247, .58); }
+.roster-card.is-winner .roster-ball { color: #fff; background: radial-gradient(circle at 30% 20%, #f5f3ff, #9333ea 45%, #4c1d95); box-shadow: inset -7px -8px 12px rgba(58, 35, 89, .28), 0 0 34px rgba(192, 38, 211, .58); }
+.roster-wallet, .activity-details strong { color: #49365d; }
+.history-row, .activity-row { border-bottom-color: var(--line); }
+.activity-icon { color: #fff; }
+.activity-meta a, .footer code { color: var(--purple); }
+.activity-meta a:hover, .distribution-solscan:hover { color: #5b21b6; }
+
+.distribution-panel {
+  border-color: rgba(124, 58, 237, .42);
+  color: var(--ink);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .99), rgba(247, 243, 255, .99));
+  box-shadow: 0 24px 80px rgba(70, 38, 112, .2), 0 0 0 100vmax rgba(38, 20, 68, .28);
+}
+.distribution-panel.is-selecting { box-shadow: 0 24px 80px rgba(70, 38, 112, .2), 0 0 0 100vmax rgba(38, 20, 68, .28), 0 0 55px rgba(124, 58, 237, .28); }
+.distribution-panel[data-phase="locking"], .distribution-panel[data-phase="winner"] { border-color: var(--electric); box-shadow: 0 24px 80px rgba(70, 38, 112, .2), 0 0 0 100vmax rgba(38, 20, 68, .28), 0 0 70px rgba(168, 85, 247, .3); }
+.distribution-panel.is-selecting::after { border-color: rgba(124, 58, 237, .42); }
+.distribution-panel[data-phase="locking"]::after { border-color: rgba(168, 85, 247, .62); box-shadow: 0 0 26px rgba(168, 85, 247, .28); }
+.distribution-panel[data-phase="winner"]::after { border-color: rgba(192, 38, 211, .5); }
+.distribution-panel.is-selecting::before { background: linear-gradient(110deg, transparent 22%, rgba(124, 58, 237, .12) 50%, transparent 78%); }
+.distribution-heading button { border-color: rgba(124, 58, 237, .28); color: var(--purple); }
+.distribution-result { background: rgba(124, 58, 237, .08); }
+.distribution-result span { color: #6b5c7d; }
+.distribution-result strong { background: radial-gradient(circle at 30% 20%, #f5f3ff, #7c3aed 45%, #4c1d95); box-shadow: 0 0 18px rgba(124, 58, 237, .42); }
+.distribution-panel[data-phase="locking"] .distribution-result strong { background: radial-gradient(circle at 30% 20%, #faf5ff, #a855f7 46%, #6d28d9); box-shadow: 0 0 32px rgba(168, 85, 247, .62); }
+.distribution-panel[data-phase="winner"] .distribution-result strong { background: radial-gradient(circle at 30% 20%, #f5f3ff, #9333ea 45%, #4c1d95); box-shadow: 0 0 42px rgba(192, 38, 211, .62); }
+.distribution-row { border-bottom-color: rgba(89, 57, 137, .12); }
+.distribution-row span { color: #5f5071; }
