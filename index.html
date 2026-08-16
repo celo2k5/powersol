@@ -7,17 +7,22 @@
     <title>POWERSOL | Solana Draw</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="site-lightning" aria-hidden="true"></div>
     <header class="topbar shell">
       <a class="brand" href="#">
         <span class="wordmark" aria-label="POWERSOL">
           <span class="letter-ball">P</span><span class="letter-ball">O</span><span class="letter-ball">W</span><span class="letter-ball">E</span><span class="letter-ball">R</span><span class="sol-ball">SOL</span>
         </span>
+        <span class="brand-chain">SOLANA</span>
       </a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="#players">Players</a>
+        <a href="#results">Results</a>
+        <a href="#ticket">My ticket</a>
+      </nav>
       <div class="topbar-right">
         <span id="socketStatus" class="socket-status"><i></i> Connecting</span>
         <button id="walletButton" class="wallet-button" type="button">Connect wallet</button>
@@ -26,46 +31,54 @@
 
     <main class="shell">
       <section class="hero">
+        <div class="hero-number" aria-hidden="true">01</div>
         <div class="hero-copy">
-          <p class="eyebrow">SOLANA POWER DRAW</p>
-          <h1>Every hold<br />has <em>power.</em></h1>
-          <p class="hero-description">Hold 500,000 tokens for one numbered ball. Draws, entries, and settlement remain authoritatively controlled by the connected backend.</p>
-          <div class="rules">
-            <span><b>500K</b> tokens = 1 ball</span>
-            <span><b>80</b> ball ticket maximum</span>
-            <span><b>1-1,000</b> draw range</span>
+          <p class="eyebrow">THE HOLDER-POWERED SOL JACKPOT</p>
+          <h1>HOLD THE<br />TOKEN.<br /><em>WIN THE<br />BALL.</em></h1>
+          <p class="hero-description">Every 500,000 tokens you hold adds a numbered ball to your ticket. At the end of every cycle, matching entries split the prize.</p>
+          <div class="steps" aria-label="How POWERSOL works">
+            <span><b>01</b> Hold tokens</span><i>→</i>
+            <span><b>02</b> Get numbered balls</span><i>→</i>
+            <span><b>03</b> Match &amp; win</span>
           </div>
+          <a class="ticket-link" href="#ticket"><span>#</span> See ticket</a>
         </div>
-        <div class="hero-art">
-          <img src="public/powersol-hero.png" alt="POWERSOL glossy Powerball-style balls with purple lightning" />
+        <div class="hero-art" aria-hidden="true">
+          <img src="public/powersol-hero.png" alt="" />
         </div>
-      </section>
-
-      <section class="draw-grid">
         <article class="draw-card">
           <div class="section-heading">
-            <div>
-              <p class="eyebrow">CURRENT POWERSOL DRAW</p>
-              <h2 id="cycleLabel">Cycle unavailable</h2>
-            </div>
+            <p class="draw-kicker"><span></span> Next draw</p>
             <span id="drawState" class="draw-state">Awaiting draw data</span>
           </div>
 
           <div class="machine">
-            <div class="energy-ring"></div>
+            <span class="orbit-ball orbit-a">P</span>
+            <span class="orbit-ball orbit-b">O</span>
+            <span class="orbit-ball orbit-c">W</span>
+            <span class="orbit-ball orbit-d">E</span>
+            <span class="orbit-ball orbit-e">R</span>
+            <span class="orbit-ball orbit-sol">SOL</span>
             <div id="winningBall" class="number-ball purple large">?</div>
-            <p id="drawMessage">The current backend is connected for holder and distribution events. Add authoritative Powerball cycle events to display a live draw.</p>
+            <div class="countdown-wrap">
+              <span>Round closes in</span>
+              <strong id="countdown">--:--:--</strong>
+              <p id="drawMessage">Awaiting the current round from the backend.</p>
+            </div>
           </div>
 
           <div class="draw-stats">
-            <div><span>Prize pool</span><strong id="prizePool">--</strong></div>
-            <div><span>Time remaining</span><strong id="countdown">--:--:--</strong></div>
+            <div><span>Est. prize</span><strong id="prizePool">--</strong></div>
             <div><span>Players</span><strong id="drawPlayers">0</strong></div>
             <div><span>Balls in play</span><strong id="totalEntries">0</strong></div>
+            <div><span id="cycleLabel">Cycle unavailable</span><strong>Live</strong></div>
           </div>
+          <p class="draw-marquee">POWERSOL <span>•</span> POWERSOL <span>•</span> POWERSOL</p>
         </article>
+      </section>
 
-        <aside class="ticket-card">
+      <section class="draw-grid">
+        <aside id="ticket" class="ticket-card">
           <div class="section-heading">
             <div>
               <p class="eyebrow">CONNECTED WALLET</p>
@@ -86,7 +99,14 @@
         </aside>
       </section>
 
-      <section class="board-section">
+      <section class="fact-strip" aria-label="POWERSOL game facts">
+        <span>✦ 500,000 tokens = 1 ball</span>
+        <span>✦ Maximum 40M tokens counted</span>
+        <span>✦ Matching entries share the prize</span>
+        <span aria-hidden="true">✦ 500,000 tokens = 1 ball</span>
+      </section>
+
+      <section id="players" class="board-section">
         <div class="section-heading board-heading">
           <div>
             <p class="eyebrow">REAL-TIME PARTICIPATION</p>
@@ -105,7 +125,7 @@
         </div>
       </section>
 
-      <section class="history-grid">
+      <section id="results" class="history-grid">
         <article class="history-card">
           <div class="section-heading">
             <div>
