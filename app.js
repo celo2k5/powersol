@@ -33,6 +33,10 @@ const elements = {
   winningBall: document.getElementById('winningBall'),
   drawMessage: document.getElementById('drawMessage'),
   drawCard: document.getElementById('drawCard'),
+  distributionPanel: document.getElementById('distributionPanel'),
+  distributionWinning: document.getElementById('distributionWinning'),
+  distributionRows: document.getElementById('distributionRows'),
+  closeDistribution: document.getElementById('closeDistribution'),
   ticketWallet: document.getElementById('ticketWallet'),
   ticketState: document.getElementById('ticketState'),
   tokensHeld: document.getElementById('tokensHeld'),
@@ -156,25 +160,83 @@ function isWinnerSelectionEvent(type, data) {
   ].includes(eventType) || eventType.includes('test') || winningNumberFrom(data) != null;
 }
 
+function distributionEntriesFrom(data) {
+  const sources = [
+    data?.winners,
+    data?.distributions,
+    data?.payouts,
+    data?.result?.winners,
+    data?.result?.distributions,
+    data?.result?.payouts,
+    data?.history?.[0]?.winners,
+  ];
+  const entries = sources.find((source) => Array.isArray(source) || (source && typeof source === 'object'));
+  if (!entries) return [];
+  if (Array.isArray(entries)) {
+    return entries.map((entry) => ({
+      wallet: entry.wallet || entry.address || entry.owner || entry.recipient || 'Winner',
+      amount: entry.amount ?? entry.payout ?? entry.reward ?? entry.value,
+    }));
+  }
+  return Object.entries(entries).map(([wallet, amount]) => ({ wallet, amount }));
+}
+
+function closeDistributionPanel() {
+  elements.distributionPanel.classList.remove('is-open');
+  elements.distributionPanel.setAttribute('aria-hidden', 'true');
+}
+
+function openDistributionPanel(winningNumber, data) {
+  const entries = distributionEntriesFrom(data);
+  elements.distributionWinning.textContent = String(winningNumber);
+  elements.distributionRows.replaceChildren();
+
+  if (!entries.length) {
+    const message = document.createElement('p');
+    message.className = 'distribution-empty';
+    message.textContent = 'Winner selection is verified. Waiting for payout distribution records from the backend.';
+    elements.distributionRows.append(message);
+  } else {
+    entries.forEach((entry) => {
+      const row = document.createElement('div');
+      row.className = 'distribution-row';
+      const wallet = document.createElement('span');
+      wallet.textContent = shorten(String(entry.wallet));
+      wallet.title = String(entry.wallet);
+      const amount = document.createElement('strong');
+      amount.textContent = entry.amount == null ? 'Amount pending' : formatAmount(entry.amount);
+      row.append(wallet, amount);
+      elements.distributionRows.append(row);
+    });
+  }
+
+  elements.distributionPanel.classList.add('is-open');
+  elements.distributionPanel.setAttribute('aria-hidden', 'false');
+}
+
 function animateWinnerSelection(data) {
   const winningNumber = winningNumberFrom(data);
   const drawData = data?.result && typeof data.result === 'object' ? { ...data, ...data.result } : data;
-  const frames = 18;
+  const frames = 30;
   let frame = 0;
 
-  clearInterval(state.selection.timer);
+  clearTimeout(state.selection.timer);
   state.selection.running = true;
+  closeDistributionPanel();
   elements.drawCard.classList.add('is-selecting');
   elements.drawState.textContent = 'Selecting winner';
   elements.drawMessage.textContent = 'The PowerSol balls are in motion. Waiting for the verified draw result.';
 
-  state.selection.timer = setInterval(() => {
+  function spin() {
     frame += 1;
     elements.winningBall.textContent = String(Math.floor(Math.random() * 1_000) + 1);
 
-    if (frame < frames) return;
+    if (frame < frames) {
+      const delay = 65 + Math.round((frame / frames) ** 2 * 190);
+      state.selection.timer = setTimeout(spin, delay);
+      return;
+    }
 
-    clearInterval(state.selection.timer);
     state.selection.timer = null;
     state.selection.running = false;
     elements.drawCard.classList.remove('is-selecting');
@@ -190,7 +252,10 @@ function animateWinnerSelection(data) {
     state.powerData.winningNumber = winningNumber;
     updateCurrentDraw();
     renderHistory();
-  }, 85);
+    openDistributionPanel(winningNumber, drawData);
+  }
+
+  state.selection.timer = setTimeout(spin, 160);
 }
 
 function renderTicket() {
@@ -406,6 +471,7 @@ function lookupWallet(event) {
 
 elements.ticketLookup.addEventListener('submit', lookupWallet);
 elements.walletSearch.addEventListener('input', renderPlayerBoard);
+elements.closeDistribution.addEventListener('click', closeDistributionPanel);
 window.addEventListener('powersol:draw', (event) => animateWinnerSelection(event.detail));
 setInterval(updateCurrentDraw, 1_000);
 connectSocket();
