@@ -13,7 +13,7 @@ Lucky V1 randomly selects one qualifying holder and sends the creator wallet's d
 
 - `state` hydrates `config.robinhoodMode`, `config.minHolding`, holder eligibility, timer, history, and the main token CA.
 - `cycle_start` opens the center-screen Lucky V1 holder-scanning presentation.
-- `holders_update` replaces the qualifying holder list.
+- `holders_update` replaces the qualifying holder list for the live `config.tokenMint`; the holder board labels that mint and clears stale holders if the configured mint changes.
 - `cycle_update` tracks the scan and enters suspense when its phase is `distributing`.
 - A new live native-SOL `transfer` is authoritative. The interface holds at least seven seconds of suspense before it reveals the selected ball's wallet, exact SOL amount, and Solscan transaction link.
 - `cycle_end` replaces history, updates the deployed-SOL total, and closes the completed winner presentation after a short celebration, even when it arrives before the delayed reveal. Failed cycles show an explicit no-winner state.

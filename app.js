@@ -8,6 +8,7 @@ const state = {
   retryTimer: null,
   data: null,
   holders: [],
+  holderMint: '',
   connectedWallet: '',
   selection: {
     timer: null,
@@ -69,6 +70,7 @@ const elements = {
   walletAddressInput: document.getElementById('walletAddressInput'),
   walletLookupMessage: document.getElementById('walletLookupMessage'),
   tokenMint: document.getElementById('tokenMint'),
+  holderTokenMint: document.getElementById('holderTokenMint'),
   walletSearch: document.getElementById('walletSearch'),
   playerCount: document.getElementById('playerCount'),
   playerRows: document.getElementById('playerRows'),
@@ -112,6 +114,15 @@ function assignedEntries(wallet) {
 function currentTokenMint() {
   const config = state.data?.config || {};
   return config.tokenMint || config.mainTokenMint || state.data?.tokenMint || state.data?.mainTokenMint || '';
+}
+
+function currentHolderSnapshot() {
+  const mint = currentTokenMint();
+  if (state.holderMint && mint && state.holderMint !== mint) {
+    state.lucky.rosterHolders = [];
+    return [];
+  }
+  return state.holders;
 }
 
 function isLuckyV1() {
@@ -240,7 +251,7 @@ function highlightWinningRoster(wallet, phase = 'locking') {
 function renderBallRoster() {
   if (!elements.ballRoster) return;
   const presentationActive = state.selection.running || Boolean(state.lucky.pendingWinner) || state.lucky.winnerRevealed;
-  const liveHolders = Array.isArray(state.holders) ? state.holders : [];
+  const liveHolders = currentHolderSnapshot();
   if (liveHolders.length) state.lucky.rosterHolders = liveHolders.slice();
   const holders = presentationActive && state.lucky.rosterHolders.length
     ? state.lucky.rosterHolders
@@ -304,8 +315,13 @@ function formatSol(value) {
 
 function renderTokenMint() {
   const mint = currentTokenMint();
-  elements.tokenMint.textContent = mint || 'Awaiting backend token configuration';
+  const label = mint || 'Awaiting backend token configuration';
+  elements.tokenMint.textContent = label;
   elements.tokenMint.title = mint;
+  if (elements.holderTokenMint) {
+    elements.holderTokenMint.textContent = label;
+    elements.holderTokenMint.title = mint;
+  }
 }
 
 function updateConnection(status) {
@@ -340,11 +356,12 @@ function updateCurrentDraw() {
   const currentCycle = cycle?.round || cycle?.id || state.data?.currentCycle?.round;
   const nextTime = cycle?.nextDrawTime || state.data?.nextDistributionTime;
   const winner = state.powerData.winningNumber;
-  const estimatedEntries = state.holders.reduce((total, holder) => total + estimatedBallCount(holder.balance), 0);
+  const liveHolders = currentHolderSnapshot();
+  const estimatedEntries = liveHolders.reduce((total, holder) => total + estimatedBallCount(holder.balance), 0);
 
   elements.cycleLabel.textContent = currentCycle ? `Cycle #${currentCycle}` : 'Cycle unavailable';
   elements.prizePool.textContent = state.powerData.prizePool == null ? '--' : formatAmount(state.powerData.prizePool);
-  elements.drawPlayers.textContent = String(state.holders.length);
+  elements.drawPlayers.textContent = String(liveHolders.length);
   elements.totalEntries.textContent = String(estimatedEntries);
   elements.ticketCycle.textContent = currentCycle ? `#${currentCycle}` : '--';
 
@@ -379,7 +396,7 @@ function updateLuckyDraw() {
 
   elements.cycleLabel.textContent = active ? `Draw / ${phase.replace(/_/g, ' ')}` : 'Next draw';
   elements.prizePool.textContent = cycle.solUsable > 0 ? formatSol(cycle.solUsable) : '-- SOL';
-  elements.drawPlayers.textContent = String(state.holders.length);
+  elements.drawPlayers.textContent = String(currentHolderSnapshot().length);
   elements.totalEntries.textContent = active
     ? Number(cycle.transfersCompleted) > 0 ? '1 ball paid' : 'Selecting'
     : '1 per holder';
@@ -470,7 +487,7 @@ function openLuckySelectionPanel(phase) {
   elements.distributionKicker.textContent = '$POWERSOL live draw';
   elements.distributionTitle.textContent = phase === 'distributing' ? 'Selecting ball' : 'Scanning holders';
   elements.distributionResultLabel.textContent = 'Eligible balls';
-  elements.distributionWinning.textContent = String(state.holders.length);
+  elements.distributionWinning.textContent = String(currentHolderSnapshot().length);
   elements.distributionRows.replaceChildren();
   const message = document.createElement('p');
   message.className = 'distribution-empty';
@@ -775,7 +792,7 @@ function animateWinnerSelection(data) {
 
 function renderTicket() {
   const wallet = state.connectedWallet;
-  const holder = state.holders.find((item) => item.wallet === wallet);
+  const holder = currentHolderSnapshot().find((item) => item.wallet === wallet);
   const balance = holder?.balance || 0;
 
   if (isLuckyV1()) {
@@ -834,8 +851,9 @@ function renderTicket() {
 function renderPlayerBoard() {
   renderBallRoster();
   const filter = elements.walletSearch.value.trim().toLowerCase();
-  const holders = state.holders.filter((holder) => holder.wallet.toLowerCase().includes(filter));
-  elements.playerCount.textContent = String(state.holders.length);
+  const liveHolders = currentHolderSnapshot();
+  const holders = liveHolders.filter((holder) => holder.wallet.toLowerCase().includes(filter));
+  elements.playerCount.textContent = String(liveHolders.length);
   elements.playerRows.replaceChildren();
 
   if (!holders.length) {
@@ -921,8 +939,13 @@ function renderHistory() {
 }
 
 function hydrateFromState(data) {
+  const previousMint = state.holderMint;
   state.data = data;
   state.holders = Array.isArray(data.holders) ? data.holders : [];
+  state.holderMint = currentTokenMint();
+  if (previousMint && state.holderMint && previousMint !== state.holderMint) {
+    state.lucky.rosterHolders = [];
+  }
   state.powerData.history = Array.isArray(data.history) ? data.history : state.powerData.history;
   if (data.totalSolDeployed != null) state.lucky.totalSolDeployed = Number(data.totalSolDeployed) || 0;
   renderTokenMint();
@@ -979,6 +1002,7 @@ function handleMessage(message) {
       break;
     case 'holders_update':
       state.holders = Array.isArray(data) ? data : [];
+      state.holderMint = currentTokenMint();
       if (isLuckyV1() && state.selection.running) openLuckySelectionPanel(state.data?.currentCycle?.phase || 'fetching_holders');
       renderTicket();
       renderPlayerBoard();
@@ -986,7 +1010,7 @@ function handleMessage(message) {
       break;
     case 'holder_pnl_update':
     case 'holder_sent_update': {
-      const holder = state.holders.find((item) => item.wallet === data?.wallet);
+      const holder = currentHolderSnapshot().find((item) => item.wallet === data?.wallet);
       if (holder) Object.assign(holder, data);
       renderTicket();
       renderPlayerBoard();
