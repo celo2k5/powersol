@@ -15,8 +15,15 @@ const state = {
   },
   lucky: {
     seenTransfers: new Set(),
+    transactionFeed: [],
+    totalSolDeployed: 0,
+    lastCycleLog: '',
+    failureMessage: '',
+    lastWinner: '',
+    rosterHolders: [],
     winnerRevealed: false,
     closeTimer: null,
+    stageTimer: null,
     pendingWinner: null,
     cycleEnded: false,
     selectionStartedAt: 0,
@@ -48,6 +55,7 @@ const elements = {
   distributionWinning: document.getElementById('distributionWinning'),
   distributionRows: document.getElementById('distributionRows'),
   closeDistribution: document.getElementById('closeDistribution'),
+  machinePhase: document.getElementById('machinePhase'),
   ticketWallet: document.getElementById('ticketWallet'),
   ticketState: document.getElementById('ticketState'),
   tokensHeld: document.getElementById('tokensHeld'),
@@ -64,8 +72,13 @@ const elements = {
   walletSearch: document.getElementById('walletSearch'),
   playerCount: document.getElementById('playerCount'),
   playerRows: document.getElementById('playerRows'),
+  ballRoster: document.getElementById('ballRoster'),
+  rosterSummary: document.getElementById('rosterSummary'),
+  rosterStatus: document.getElementById('rosterStatus'),
   winnerHistory: document.getElementById('winnerHistory'),
   ticketHistory: document.getElementById('ticketHistory'),
+  activityFeed: document.getElementById('activityFeed'),
+  totalSolDeployed: document.getElementById('totalSolDeployed'),
 };
 
 function shorten(value) {
@@ -105,6 +118,182 @@ function isLuckyV1() {
   return state.data?.config?.robinhoodMode === 'luckyv1';
 }
 
+function isNativeLuckyTransfer(data) {
+  return Boolean(
+    data
+      && typeof data.wallet === 'string'
+      && data.wallet
+      && data.tokenMint === 'native'
+      && data.tokenSymbol === 'SOL'
+      && data.tokenMetadata == null
+  );
+}
+
+function getTransferKey(data) {
+  return data?.signature || `${data?.wallet || 'unknown'}:${data?.timestamp || ''}:${data?.amount ?? ''}`;
+}
+
+function eventKey(type, data) {
+  const signature = typeof data?.signature === 'string' ? data.signature : '';
+  return signature ? `${type}:${signature}` : `${type}:${data?.timestamp || ''}:${data?.wallet || ''}:${data?.amount ?? ''}`;
+}
+
+function addActivityEvent(type, data, render = true) {
+  if (!type || !data || typeof data !== 'object') return;
+  const key = eventKey(type, data);
+  state.lucky.transactionFeed = state.lucky.transactionFeed.filter((event) => eventKey(event.type, event.data) !== key);
+  state.lucky.transactionFeed.unshift({ type, data });
+  state.lucky.transactionFeed = state.lucky.transactionFeed.slice(0, 20);
+  if (render) renderActivityFeed();
+}
+
+function renderActivityFeed() {
+  elements.activityFeed.replaceChildren();
+  if (!state.lucky.transactionFeed.length) {
+    const message = document.createElement('p');
+    message.className = 'empty-message';
+    message.textContent = 'Waiting for live draw and transfer events.';
+    elements.activityFeed.append(message);
+    return;
+  }
+
+  state.lucky.transactionFeed.slice(0, 12).forEach((event) => {
+    const data = event.data || {};
+    const row = document.createElement('div');
+    row.className = 'activity-row';
+    const icon = createBall(event.type === 'transfer' ? 'SOL' : event.type === 'fee_claim' ? 'FEE' : 'SWAP', event.type === 'transfer');
+    icon.classList.add('activity-icon');
+    const details = document.createElement('div');
+    details.className = 'activity-details';
+    const title = document.createElement('strong');
+    const description = event.type === 'transfer'
+      ? `SOL payout · ${shorten(data.wallet)} · ${formatSol(data.amount)}`
+      : event.type === 'fee_claim'
+        ? `Fee claim · ${data.status || 'pending'}`
+        : `Token swap · ${data.tokenSymbol || 'token'} · ${data.status || 'pending'}`;
+    title.textContent = description;
+    const timestamp = document.createElement('span');
+    timestamp.textContent = data.timestamp ? new Date(data.timestamp).toLocaleString() : 'Live event';
+    details.append(title, timestamp);
+    const right = document.createElement('div');
+    right.className = 'activity-meta';
+    const status = document.createElement('span');
+    status.textContent = String(data.status || 'event');
+    right.append(status);
+    if (typeof data.signature === 'string' && data.signature) {
+      const link = document.createElement('a');
+      link.href = `https://solscan.io/tx/${encodeURIComponent(data.signature)}`;
+      link.target = '_blank';
+      link.rel = 'noreferrer';
+      link.textContent = 'Solscan';
+      right.append(link);
+    }
+    row.append(icon, details, right);
+    elements.activityFeed.append(row);
+  });
+}
+
+function setRosterPhase(phase) {
+  if (!elements.ballRoster) return;
+  const normalized = String(phase || 'idle').replace(/_/g, '-');
+  elements.ballRoster.dataset.phase = normalized;
+  elements.ballRoster.classList.toggle('is-selecting', normalized === 'scanning' || normalized === 'selecting');
+  elements.ballRoster.classList.toggle('is-locking', normalized === 'locking');
+  elements.ballRoster.classList.toggle('is-winner', normalized === 'winner');
+
+  if (normalized === 'idle' || normalized === 'scanning' || normalized === 'selecting') {
+    elements.ballRoster.querySelectorAll('.roster-card').forEach((card) => {
+      card.classList.remove('is-dimmed', 'is-locked', 'is-winner');
+    });
+    if (elements.rosterStatus) {
+      elements.rosterStatus.textContent = elements.ballRoster.querySelector('.roster-card')
+        ? 'Every ball has equal odds'
+        : 'Awaiting holder snapshot';
+    }
+  }
+}
+
+function highlightWinningRoster(wallet, phase = 'locking') {
+  if (!elements.ballRoster || !wallet) return;
+  const cards = [...elements.ballRoster.querySelectorAll('.roster-card')];
+  const selected = cards.find((card) => card.dataset.wallet === wallet);
+  cards.forEach((card) => {
+    card.classList.remove('is-locked', 'is-winner');
+    card.classList.toggle('is-dimmed', Boolean(selected && card !== selected));
+  });
+
+  if (!selected) {
+    if (elements.rosterStatus) elements.rosterStatus.textContent = `${shorten(wallet)} selected outside the current snapshot`;
+    return;
+  }
+
+  selected.classList.remove('is-dimmed');
+  selected.classList.add(phase === 'winner' ? 'is-winner' : 'is-locked');
+  const ballLabel = selected.querySelector('.roster-ball-label')?.textContent || 'draw ball';
+  if (elements.rosterStatus) {
+    elements.rosterStatus.textContent = phase === 'winner'
+      ? `${ballLabel} won by ${shorten(wallet)}`
+      : `${ballLabel} locked - reveal incoming`;
+  }
+}
+
+function renderBallRoster() {
+  if (!elements.ballRoster) return;
+  const presentationActive = state.selection.running || Boolean(state.lucky.pendingWinner) || state.lucky.winnerRevealed;
+  const liveHolders = Array.isArray(state.holders) ? state.holders : [];
+  if (liveHolders.length) state.lucky.rosterHolders = liveHolders.slice();
+  const holders = presentationActive && state.lucky.rosterHolders.length
+    ? state.lucky.rosterHolders
+    : liveHolders;
+  const count = holders.length;
+  elements.rosterSummary.textContent = `${count} holder${count === 1 ? '' : 's'} / ${count} ball${count === 1 ? '' : 's'}`;
+  elements.ballRoster.replaceChildren();
+
+  if (!count) {
+    const message = document.createElement('p');
+    message.className = 'empty-message';
+    message.textContent = 'The qualifying holder snapshot will populate the ball registry.';
+    elements.ballRoster.append(message);
+    setRosterPhase('idle');
+    return;
+  }
+
+  holders.forEach((holder, index) => {
+    const ballNumber = String(index + 1).padStart(2, '0');
+    const card = document.createElement('article');
+    card.className = 'roster-card';
+    card.dataset.wallet = holder.wallet;
+    card.style.setProperty('--ball-delay', `${(index % 17) * 0.055}s`);
+
+    const ball = createBall(ballNumber, false, true);
+    ball.classList.add('roster-ball');
+    const copy = document.createElement('div');
+    copy.className = 'roster-card-copy';
+    const label = document.createElement('span');
+    label.className = 'roster-ball-label';
+    label.textContent = `Draw ball ${ballNumber}`;
+    const wallet = document.createElement('strong');
+    wallet.className = 'roster-wallet';
+    wallet.textContent = shorten(holder.wallet);
+    wallet.title = holder.wallet;
+    const balance = document.createElement('span');
+    balance.className = 'roster-balance';
+    balance.textContent = `${formatAmount(holder.balance)} tokens`;
+    copy.append(label, wallet, balance);
+    card.append(ball, copy);
+    elements.ballRoster.append(card);
+  });
+
+  const pendingWallet = state.lucky.pendingWinner?.wallet;
+  if (pendingWallet) {
+    highlightWinningRoster(pendingWallet, 'locking');
+  } else if (state.lucky.winnerRevealed && state.lucky.lastWinner) {
+    highlightWinningRoster(state.lucky.lastWinner, 'winner');
+  } else {
+    setRosterPhase(elements.ballRoster.dataset.phase || 'idle');
+  }
+}
+
 function minimumHolding() {
   return Number(state.data?.config?.minHolding) || 0;
 }
@@ -122,6 +311,23 @@ function renderTokenMint() {
 function updateConnection(status) {
   elements.socketStatus.classList.toggle('live', status === 'live');
   elements.socketStatus.lastChild.textContent = status === 'live' ? ' Live data' : status === 'reconnecting' ? ' Reconnecting' : ' Connecting';
+}
+
+function setPresentationPhase(phase) {
+  const normalized = String(phase || 'idle').replace(/_/g, '-');
+  elements.drawCard.dataset.phase = normalized;
+  elements.distributionPanel.dataset.phase = normalized;
+  setRosterPhase(normalized);
+  if (elements.machinePhase) {
+    const labels = {
+      idle: 'STANDBY',
+      scanning: 'SCANNING HOLDERS',
+      selecting: 'ROLLING SELECTION',
+      locking: 'FINALIZING DRAW',
+      winner: 'WINNER CONFIRMED',
+    };
+    elements.machinePhase.textContent = labels[normalized] || normalized.toUpperCase();
+  }
 }
 
 function updateCurrentDraw() {
@@ -174,23 +380,30 @@ function updateLuckyDraw() {
   elements.cycleLabel.textContent = active ? `Draw / ${phase.replace(/_/g, ' ')}` : 'Next draw';
   elements.prizePool.textContent = cycle.solUsable > 0 ? formatSol(cycle.solUsable) : '-- SOL';
   elements.drawPlayers.textContent = String(state.holders.length);
-  elements.totalEntries.textContent = active ? 'In progress' : 'Ready';
+  elements.totalEntries.textContent = active
+    ? Number(cycle.transfersCompleted) > 0 ? '1 ball paid' : 'Selecting'
+    : '1 per holder';
   elements.ticketCycle.textContent = active ? phase.replace(/_/g, ' ') : 'Next draw';
+  elements.totalSolDeployed.textContent = state.lucky.totalSolDeployed > 0 ? formatSol(state.lucky.totalSolDeployed) : '--';
 
   if (!state.selection.running) {
     if (state.lucky.winnerRevealed) {
       elements.winningBall.textContent = 'SOL';
       elements.drawState.textContent = 'Winner confirmed';
-      return;
+    } else if (state.lucky.failureMessage) {
+      elements.winningBall.textContent = '?';
+      elements.drawState.textContent = 'Draw failed';
+      elements.drawMessage.textContent = state.lucky.failureMessage;
+    } else {
+      setPresentationPhase('idle');
+      elements.winningBall.textContent = '?';
+      elements.drawState.textContent = active ? phase.replace(/_/g, ' ') : nextTime ? 'Draw pending' : 'Awaiting draw data';
+      elements.drawMessage.textContent = active
+        ? 'One draw ball maps to each qualifying holder. The winning wallet appears only after the native SOL transfer.'
+        : nextTime
+          ? 'Every qualifying holder gets one draw ball when the next draw begins.'
+          : 'Awaiting scheduler data from the backend.';
     }
-
-    elements.winningBall.textContent = active ? 'SOL' : '?';
-    elements.drawState.textContent = active ? phase.replace(/_/g, ' ') : nextTime ? 'Draw pending' : 'Awaiting draw data';
-    elements.drawMessage.textContent = active
-      ? 'The draw is processing qualifying holders. The winner is revealed only after the native SOL transfer arrives.'
-      : nextTime
-        ? 'One qualifying holder will receive the distributable native SOL when the next draw begins.'
-        : 'Awaiting scheduler data from the backend.';
   }
 
   if (!nextTime) {
@@ -253,15 +466,15 @@ function closeDistributionPanel() {
 }
 
 function openLuckySelectionPanel(phase) {
-  const phaseLabel = phase.replace(/_/g, ' ');
+  const phaseLabel = String(phase || 'fetching_holders').replace(/_/g, ' ');
   elements.distributionKicker.textContent = '$POWERSOL live draw';
-  elements.distributionTitle.textContent = phase === 'distributing' ? 'Selecting holder' : 'Scanning holders';
-  elements.distributionResultLabel.textContent = 'Eligible holders';
+  elements.distributionTitle.textContent = phase === 'distributing' ? 'Selecting ball' : 'Scanning holders';
+  elements.distributionResultLabel.textContent = 'Eligible balls';
   elements.distributionWinning.textContent = String(state.holders.length);
   elements.distributionRows.replaceChildren();
   const message = document.createElement('p');
   message.className = 'distribution-empty';
-  message.textContent = `Phase: ${phaseLabel}. The backend chooses one qualifying holder; no winner is shown until the native SOL transfer is received.`;
+  message.textContent = `Phase: ${phaseLabel}. Each qualifying holder is represented by one draw ball; the winner stays hidden until the native SOL transfer arrives.`;
   elements.distributionRows.append(message);
   elements.distributionPanel.classList.add('is-open', 'is-selecting');
   elements.distributionPanel.setAttribute('aria-hidden', 'false');
@@ -271,22 +484,42 @@ function startLuckyPresentation(cycle) {
   const wasSelecting = state.selection.running;
   if (!wasSelecting) clearTimeout(state.selection.timer);
   clearTimeout(state.lucky.closeTimer);
+  clearTimeout(state.lucky.stageTimer);
   if (!wasSelecting) state.lucky.selectionStartedAt = Date.now();
   state.selection.running = true;
   state.lucky.winnerRevealed = false;
-  if (!wasSelecting) state.lucky.cycleEnded = false;
+  state.lucky.failureMessage = '';
+  if (!wasSelecting) {
+    state.lucky.cycleEnded = false;
+    state.lucky.lastWinner = '';
+    state.lucky.rosterHolders = [];
+    if (elements.ballRoster) {
+      elements.ballRoster.replaceChildren();
+      elements.rosterSummary.textContent = '0 holders / 0 balls';
+      elements.rosterStatus.textContent = 'Scanning for qualifying holders';
+    }
+  }
+  setPresentationPhase(cycle.phase === 'distributing' ? 'selecting' : 'scanning');
   elements.drawCard.classList.add('is-selecting');
-  elements.winningBall.textContent = 'SOL';
+  elements.winningBall.textContent = '?';
   elements.drawState.textContent = cycle.phase === 'distributing' ? 'Selecting winner' : 'Scanning holders';
-  elements.drawMessage.textContent = 'The draw is selecting from the backend-qualified holder snapshot.';
+  elements.drawMessage.textContent = cycle.phase === 'distributing'
+    ? 'The draw field is converging on one ball from the backend-qualified holder set.'
+    : 'The draw is converting the backend-qualified holder snapshot into one ball per holder.';
   openLuckySelectionPanel(cycle.phase || 'fetching_holders');
 }
 
 function scheduleLuckyOverlayClose() {
   clearTimeout(state.lucky.closeTimer);
+  clearTimeout(state.lucky.stageTimer);
   state.lucky.closeTimer = setTimeout(() => {
     closeDistributionPanel();
+    setPresentationPhase('idle');
     state.lucky.winnerRevealed = false;
+    state.lucky.failureMessage = '';
+    state.lucky.lastWinner = '';
+    state.lucky.rosterHolders = [];
+    renderBallRoster();
     updateCurrentDraw();
   }, 8_000);
 }
@@ -294,15 +527,20 @@ function scheduleLuckyOverlayClose() {
 function showLuckyWinner(transfer) {
   state.lucky.pendingWinner = null;
   clearTimeout(state.selection.timer);
+  clearTimeout(state.lucky.stageTimer);
   state.selection.running = false;
   state.lucky.winnerRevealed = true;
+  state.lucky.failureMessage = '';
+  state.lucky.lastWinner = transfer.wallet;
+  setPresentationPhase('winner');
+  highlightWinningRoster(transfer.wallet, 'winner');
   elements.drawCard.classList.remove('is-selecting');
   elements.winningBall.textContent = 'SOL';
   elements.drawState.textContent = 'Winner confirmed';
-  elements.drawMessage.textContent = `${shorten(transfer.wallet)} receives ${formatSol(transfer.amount)} from the draw.`;
+  elements.drawMessage.textContent = `${shorten(transfer.wallet)} is the selected ball and receives ${formatSol(transfer.amount)}.`;
   elements.distributionKicker.textContent = '$POWERSOL winner';
-  elements.distributionTitle.textContent = 'Native SOL sent';
-  elements.distributionResultLabel.textContent = 'Winner wallet';
+  elements.distributionTitle.textContent = 'Winning ball selected';
+  elements.distributionResultLabel.textContent = 'Winning holder';
   elements.distributionWinning.textContent = shorten(transfer.wallet);
   elements.distributionRows.replaceChildren();
 
@@ -316,13 +554,13 @@ function showLuckyWinner(transfer) {
   payout.append(wallet, amount);
   elements.distributionRows.append(payout);
 
-  if (transfer.signature) {
+  if (typeof transfer.signature === 'string' && transfer.signature) {
     const link = document.createElement('a');
     link.href = `https://solscan.io/tx/${encodeURIComponent(transfer.signature)}`;
     link.target = '_blank';
     link.rel = 'noreferrer';
     link.className = 'distribution-solscan';
-    link.textContent = 'View verified transaction on Solscan';
+    link.textContent = 'View transaction on Solscan';
     elements.distributionRows.append(link);
   }
 
@@ -333,9 +571,9 @@ function showLuckyWinner(transfer) {
 }
 
 function revealLuckyWinner(transfer) {
-  const transferKey = transfer.signature || `${transfer.wallet}:${transfer.timestamp}:${transfer.amount}`;
-  if (state.lucky.seenTransfers.has(transferKey)) return;
-  state.lucky.seenTransfers.add(transferKey);
+  const key = getTransferKey(transfer);
+  if (state.lucky.seenTransfers.has(key)) return;
+  state.lucky.seenTransfers.add(key);
 
   if (!state.selection.running) startLuckyPresentation({ phase: 'distributing' });
 
@@ -344,6 +582,11 @@ function revealLuckyWinner(transfer) {
   const elapsed = Date.now() - state.lucky.selectionStartedAt;
   const revealDelay = Math.max(0, minimumSuspenseMs - elapsed);
 
+  clearTimeout(state.lucky.stageTimer);
+  setPresentationPhase('locking');
+  highlightWinningRoster(transfer.wallet, 'locking');
+  elements.drawState.textContent = 'Winner locked';
+  elements.drawMessage.textContent = 'The transfer signal is secured. Finalizing the draw before the public reveal.';
   elements.distributionKicker.textContent = 'Final verification';
   elements.distributionTitle.textContent = 'Winner locked';
   elements.distributionResultLabel.textContent = 'Reveal incoming';
@@ -351,11 +594,54 @@ function revealLuckyWinner(transfer) {
   elements.distributionRows.replaceChildren();
   const message = document.createElement('p');
   message.className = 'distribution-empty';
-  message.textContent = 'The native SOL transfer is confirmed. Holding the reveal while the draw completes.';
+  message.textContent = 'The native SOL transfer is received. Holding the reveal while the final draw beat completes.';
   elements.distributionRows.append(message);
+
+  if (revealDelay > 0) {
+    const finalizingDelay = Math.min(Math.round(revealDelay * .46), 2_400);
+    state.lucky.stageTimer = setTimeout(() => {
+      if (state.lucky.pendingWinner !== transfer) return;
+      elements.distributionKicker.textContent = 'Draw calibration';
+      elements.distributionTitle.textContent = 'Signal converging';
+      elements.distributionResultLabel.textContent = 'Finalizing';
+      if (elements.distributionRows.firstElementChild) {
+        elements.distributionRows.firstElementChild.textContent = 'One final power-field pass. The selected ball stays hidden until the reveal beat completes.';
+      }
+      elements.drawState.textContent = 'Finalizing draw';
+      elements.drawMessage.textContent = 'Power field stabilized. Preparing the native SOL distribution reveal.';
+    }, finalizingDelay);
+  }
 
   clearTimeout(state.selection.timer);
   state.selection.timer = setTimeout(() => showLuckyWinner(transfer), revealDelay);
+}
+
+function showLuckyFailure(error) {
+  clearTimeout(state.selection.timer);
+  clearTimeout(state.lucky.stageTimer);
+  state.selection.running = false;
+  state.lucky.pendingWinner = null;
+  state.lucky.winnerRevealed = false;
+  state.lucky.failureMessage = error || 'The backend ended this draw without a native SOL transfer.';
+  state.lucky.lastWinner = '';
+  setPresentationPhase('idle');
+  elements.drawCard.classList.remove('is-selecting');
+  elements.winningBall.textContent = '?';
+  elements.drawState.textContent = 'Draw failed';
+  elements.drawMessage.textContent = error || 'No winner was selected because the backend could not complete the draw.';
+  elements.distributionKicker.textContent = '$POWERSOL draw';
+  elements.distributionTitle.textContent = 'No winner selected';
+  elements.distributionResultLabel.textContent = 'Status';
+  elements.distributionWinning.textContent = 'FAILED';
+  elements.distributionRows.replaceChildren();
+  const message = document.createElement('p');
+  message.className = 'distribution-empty';
+  message.textContent = state.lucky.failureMessage;
+  elements.distributionRows.append(message);
+  elements.distributionPanel.classList.add('is-open');
+  elements.distributionPanel.classList.remove('is-selecting');
+  elements.distributionPanel.setAttribute('aria-hidden', 'false');
+  scheduleLuckyOverlayClose();
 }
 
 function completeLuckyCycle(data) {
@@ -364,8 +650,17 @@ function completeLuckyCycle(data) {
     state.data.history = Array.isArray(data?.history) ? data.history : state.data.history;
   }
   state.powerData.history = Array.isArray(data?.history) ? data.history : state.powerData.history;
+  if (data?.totalSolDeployed != null) state.lucky.totalSolDeployed = Number(data.totalSolDeployed) || 0;
   renderHistory();
   state.lucky.cycleEnded = true;
+
+  const latest = Array.isArray(data?.history) ? data.history[0] : null;
+  const failed = data?.cycle?.phase === 'failed' || latest?.status === 'failed';
+  if (failed) {
+    showLuckyFailure(latest?.error || 'The backend ended this draw without a native SOL transfer.');
+    updateCurrentDraw();
+    return;
+  }
 
   if (state.lucky.pendingWinner) {
     updateCurrentDraw();
@@ -378,6 +673,7 @@ function completeLuckyCycle(data) {
     scheduleLuckyOverlayClose();
   } else {
     closeDistributionPanel();
+    setPresentationPhase('idle');
   }
 
   updateCurrentDraw();
@@ -490,20 +786,20 @@ function renderTicket() {
     elements.ticketWallet.textContent = wallet || 'No wallet address selected';
     elements.ticketState.textContent = wallet ? (qualifies ? 'Qualifying holder' : 'Not currently eligible') : 'Address required';
     elements.tokensHeld.textContent = wallet ? formatAmount(balance) : '--';
-    elements.eligibleBalls.textContent = wallet ? (qualifies ? 'Eligible' : 'Not eligible') : 'Not checked';
+    elements.eligibleBalls.textContent = wallet ? (qualifies ? '1 ball' : '0 balls') : 'Not checked';
     elements.progressPercent.textContent = wallet ? `${Math.round(progress)}%` : '0%';
     elements.progressBar.style.width = `${wallet ? progress : 0}%`;
     elements.progressLabel.textContent = wallet
       ? minimum > 0
         ? `${formatAmount(balance)} / ${formatAmount(minimum)} required to qualify`
-        : qualifies ? 'This wallet is in the current qualifying-holder snapshot.' : 'Waiting for the current qualifying-holder snapshot.'
+        : qualifies ? 'This holder maps to exactly one draw ball.' : 'Waiting for the current qualifying-holder snapshot.'
       : 'Enter a wallet address to check draw eligibility';
 
     elements.ticketNumbers.replaceChildren();
     elements.ticketNumbers.classList.add('empty');
     elements.ticketNumbers.textContent = wallet
       ? qualifies
-        ? 'This wallet is eligible for one holder draw entry.'
+        ? 'This qualifying holder receives exactly one draw ball.'
         : 'This wallet is not in the current backend-qualified holder snapshot.'
       : 'Enter a wallet address above to check draw eligibility.';
     return;
@@ -536,6 +832,7 @@ function renderTicket() {
 }
 
 function renderPlayerBoard() {
+  renderBallRoster();
   const filter = elements.walletSearch.value.trim().toLowerCase();
   const holders = state.holders.filter((holder) => holder.wallet.toLowerCase().includes(filter));
   elements.playerCount.textContent = String(state.holders.length);
@@ -557,9 +854,10 @@ function renderPlayerBoard() {
 
     let countText;
     if (isLuckyV1()) {
-      balls.textContent = 'Qualified for the next holder draw';
-      balls.classList.add('holder-balance');
-      countText = 'Qualified';
+      const ball = createBall('1', false, true);
+      ball.title = 'One draw ball assigned to this qualifying holder';
+      balls.append(ball);
+      countText = '1 ball';
     } else {
       const entries = assignedEntries(holder.wallet);
       const estimate = estimatedBallCount(holder.balance);
@@ -596,11 +894,16 @@ function renderHistory() {
       const row = document.createElement('div');
       row.className = 'history-row';
       if (isLuckyV1()) {
-        row.append(
-          createBall('SOL', true),
-          Object.assign(document.createElement('span'), { textContent: `Cycle #${round.round ?? '--'} · ${round.holdersCount ?? 0} qualifying holders · ${round.status || 'completed'}` }),
-          Object.assign(document.createElement('strong'), { textContent: round.solSpent != null ? formatSol(round.solSpent) : '-- SOL' })
-        );
+        const winner = luckyWinnerFromRecord(round);
+        const ball = createBall(winner ? 'WIN' : round.status === 'failed' ? '!' : 'SOL', true);
+        const details = document.createElement('span');
+        details.textContent = winner
+          ? `Cycle #${round.round ?? '--'} · ${shorten(winner)} · ${round.holdersCount ?? 1} ball selected`
+          : `Cycle #${round.round ?? '--'} · ${round.status || 'completed'}${round.error ? ` · ${round.error}` : ''}`;
+        if (winner) details.title = winner;
+        const amount = document.createElement('strong');
+        amount.textContent = round.solSpent != null ? formatSol(round.solSpent) : '-- SOL';
+        row.append(ball, details, amount);
         elements.winnerHistory.append(row);
         return;
       }
@@ -621,12 +924,24 @@ function hydrateFromState(data) {
   state.data = data;
   state.holders = Array.isArray(data.holders) ? data.holders : [];
   state.powerData.history = Array.isArray(data.history) ? data.history : state.powerData.history;
+  if (data.totalSolDeployed != null) state.lucky.totalSolDeployed = Number(data.totalSolDeployed) || 0;
   renderTokenMint();
   if (isLuckyV1() && data.currentCycle?.active) startLuckyPresentation(data.currentCycle);
   updateCurrentDraw();
   renderTicket();
   renderPlayerBoard();
   renderHistory();
+  renderActivityFeed();
+}
+
+function luckyWinnerFromRecord(record) {
+  if (!record || typeof record !== 'object') return '';
+  if (typeof record.publicWinner === 'string' && record.publicWinner) return record.publicWinner;
+  if (Array.isArray(record.transfers)) {
+    const transfer = record.transfers.find((item) => item && typeof item.wallet === 'string' && item.wallet);
+    return transfer?.wallet || '';
+  }
+  return '';
 }
 
 function mergePowerData(data) {
@@ -648,6 +963,20 @@ function handleMessage(message) {
     case 'state':
       hydrateFromState(data || {});
       break;
+    case 'tx_history':
+      state.lucky.transactionFeed = [];
+      (Array.isArray(data) ? data : []).forEach((event) => {
+        addActivityEvent(event?.type, event?.data, false);
+        if (event?.type === 'transfer' && isNativeLuckyTransfer(event.data)) {
+          state.lucky.seenTransfers.add(getTransferKey(event.data));
+        }
+      });
+      renderActivityFeed();
+      break;
+    case 'fee_claim':
+    case 'token_swap':
+      addActivityEvent(type, data);
+      break;
     case 'holders_update':
       state.holders = Array.isArray(data) ? data : [];
       if (isLuckyV1() && state.selection.running) openLuckySelectionPanel(state.data?.currentCycle?.phase || 'fetching_holders');
@@ -666,10 +995,20 @@ function handleMessage(message) {
     case 'tick':
     case 'scheduler_state':
       if (state.data) {
-        state.data.nextDistributionTime = data?.nextDistributionTime;
+        if (data?.nextDistributionTime !== undefined) {
+          state.data.nextDistributionTime = data.nextDistributionTime;
+        }
         if (data?.schedulerRunning != null) state.data.schedulerRunning = data.schedulerRunning;
       }
       updateCurrentDraw();
+      break;
+    case 'cycle_log':
+      if (isLuckyV1()) {
+        state.lucky.lastCycleLog = typeof data === 'string' ? data : '';
+        if (state.selection.running && !state.lucky.pendingWinner && state.lucky.lastCycleLog) {
+          elements.drawMessage.textContent = state.lucky.lastCycleLog;
+        }
+      }
       break;
     case 'cycle_start':
       if (isLuckyV1()) {
@@ -682,13 +1021,18 @@ function handleMessage(message) {
     case 'cycle_update':
       if (isLuckyV1()) {
         if (state.data) state.data.currentCycle = data || {};
-        if (data?.active && data.phase === 'distributing') startLuckyPresentation(data);
+        if (data?.active) startLuckyPresentation(data);
         updateCurrentDraw();
         break;
       }
       break;
     case 'transfer':
-      if (isLuckyV1() && data?.tokenMint === 'native' && !['failed', 'skipped'].includes(data.status)) {
+      addActivityEvent(type, data);
+      if (isLuckyV1() && isNativeLuckyTransfer(data) && !['failed', 'skipped'].includes(data.status)) {
+        if (state.data?.currentCycle) {
+          state.data.currentCycle.transfersCompleted = Math.max(Number(state.data.currentCycle.transfersCompleted) || 0, 1);
+        }
+        updateCurrentDraw();
         revealLuckyWinner(data);
       }
       break;
