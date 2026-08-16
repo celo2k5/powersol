@@ -15,8 +15,8 @@ Lucky V1 randomly selects one qualifying holder and sends the creator wallet's d
 - `cycle_start` opens the center-screen Lucky V1 holder-scanning presentation.
 - `holders_update` replaces the qualifying holder list.
 - `cycle_update` enters suspense when its phase is `distributing`.
-- A live native-SOL `transfer` is the authoritative winner reveal. It displays the winner wallet, exact SOL amount, and Solscan transaction link.
-- `cycle_end` replaces history and closes the completed winner presentation after a short celebration.
+- A live native-SOL `transfer` is authoritative. The interface holds at least seven seconds of suspense before it reveals the winner wallet, exact SOL amount, and Solscan transaction link.
+- `cycle_end` replaces history and closes the completed winner presentation after a short celebration, even when it arrives before the delayed reveal.
 
 Winner transfers are deduplicated by signature. Transfers restored from `tx_history` do not replay the winner celebration.
 

@@ -17,6 +17,9 @@ const state = {
     seenTransfers: new Set(),
     winnerRevealed: false,
     closeTimer: null,
+    pendingWinner: null,
+    cycleEnded: false,
+    selectionStartedAt: 0,
   },
   powerData: {
     cycle: null,
@@ -265,10 +268,13 @@ function openLuckySelectionPanel(phase) {
 }
 
 function startLuckyPresentation(cycle) {
-  clearTimeout(state.selection.timer);
+  const wasSelecting = state.selection.running;
+  if (!wasSelecting) clearTimeout(state.selection.timer);
   clearTimeout(state.lucky.closeTimer);
+  if (!wasSelecting) state.lucky.selectionStartedAt = Date.now();
   state.selection.running = true;
   state.lucky.winnerRevealed = false;
+  if (!wasSelecting) state.lucky.cycleEnded = false;
   elements.drawCard.classList.add('is-selecting');
   elements.winningBall.textContent = 'SOL';
   elements.drawState.textContent = cycle.phase === 'distributing' ? 'Selecting winner' : 'Scanning holders';
@@ -276,12 +282,18 @@ function startLuckyPresentation(cycle) {
   openLuckySelectionPanel(cycle.phase || 'fetching_holders');
 }
 
-function revealLuckyWinner(transfer) {
-  const transferKey = transfer.signature || `${transfer.wallet}:${transfer.timestamp}:${transfer.amount}`;
-  if (state.lucky.seenTransfers.has(transferKey)) return;
-  state.lucky.seenTransfers.add(transferKey);
-  clearTimeout(state.selection.timer);
+function scheduleLuckyOverlayClose() {
   clearTimeout(state.lucky.closeTimer);
+  state.lucky.closeTimer = setTimeout(() => {
+    closeDistributionPanel();
+    state.lucky.winnerRevealed = false;
+    updateCurrentDraw();
+  }, 8_000);
+}
+
+function showLuckyWinner(transfer) {
+  state.lucky.pendingWinner = null;
+  clearTimeout(state.selection.timer);
   state.selection.running = false;
   state.lucky.winnerRevealed = true;
   elements.drawCard.classList.remove('is-selecting');
@@ -317,6 +329,33 @@ function revealLuckyWinner(transfer) {
   elements.distributionPanel.classList.add('is-open');
   elements.distributionPanel.classList.remove('is-selecting');
   elements.distributionPanel.setAttribute('aria-hidden', 'false');
+  if (state.lucky.cycleEnded) scheduleLuckyOverlayClose();
+}
+
+function revealLuckyWinner(transfer) {
+  const transferKey = transfer.signature || `${transfer.wallet}:${transfer.timestamp}:${transfer.amount}`;
+  if (state.lucky.seenTransfers.has(transferKey)) return;
+  state.lucky.seenTransfers.add(transferKey);
+
+  if (!state.selection.running) startLuckyPresentation({ phase: 'distributing' });
+
+  state.lucky.pendingWinner = transfer;
+  const minimumSuspenseMs = 7_000;
+  const elapsed = Date.now() - state.lucky.selectionStartedAt;
+  const revealDelay = Math.max(0, minimumSuspenseMs - elapsed);
+
+  elements.distributionKicker.textContent = 'Final verification';
+  elements.distributionTitle.textContent = 'Winner locked';
+  elements.distributionResultLabel.textContent = 'Reveal incoming';
+  elements.distributionWinning.textContent = 'SOL';
+  elements.distributionRows.replaceChildren();
+  const message = document.createElement('p');
+  message.className = 'distribution-empty';
+  message.textContent = 'The native SOL transfer is confirmed. Holding the reveal while the draw completes.';
+  elements.distributionRows.append(message);
+
+  clearTimeout(state.selection.timer);
+  state.selection.timer = setTimeout(() => showLuckyWinner(transfer), revealDelay);
 }
 
 function completeLuckyCycle(data) {
@@ -325,16 +364,18 @@ function completeLuckyCycle(data) {
     state.data.history = Array.isArray(data?.history) ? data.history : state.data.history;
   }
   state.powerData.history = Array.isArray(data?.history) ? data.history : state.powerData.history;
+  renderHistory();
+  state.lucky.cycleEnded = true;
+
+  if (state.lucky.pendingWinner) {
+    updateCurrentDraw();
+    return;
+  }
+
   state.selection.running = false;
   elements.drawCard.classList.remove('is-selecting');
-  renderHistory();
-
   if (state.lucky.winnerRevealed) {
-    state.lucky.closeTimer = setTimeout(() => {
-      closeDistributionPanel();
-      state.lucky.winnerRevealed = false;
-      updateCurrentDraw();
-    }, 8_000);
+    scheduleLuckyOverlayClose();
   } else {
     closeDistributionPanel();
   }
